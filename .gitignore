@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+.ledit/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
