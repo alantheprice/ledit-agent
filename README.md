@@ -70,40 +70,30 @@ jobs:
 ### OpenAI
 ```yaml
 ai-provider: 'openai'
-ai-model: 'gpt-4o'          # Most capable
-ai-model: 'gpt-4o-mini'     # Cost-effective
+ai-model: 'gpt-5'          # Most capable
+ai-model: 'gpt-5-mini'     # Cost-effective for an openai model
 ai-api-key: ${{ secrets.OPENAI_API_KEY }}
-```
-
-### Groq (Free Tier Available!)
-```yaml
-ai-provider: 'groq'
-ai-model: 'llama-3.1-70b-versatile'
-ai-api-key: ${{ secrets.GROQ_API_KEY }}
-```
-Get your free API key at [console.groq.com](https://console.groq.com/keys)
-
-### Google Gemini
-```yaml
-ai-provider: 'gemini'
-ai-model: 'gemini-1.5-flash'    # Fast
-ai-model: 'gemini-1.5-pro'      # Advanced
-ai-api-key: ${{ secrets.GEMINI_API_KEY }}
 ```
 
 ### DeepInfra
 ```yaml
 ai-provider: 'deepinfra'
-ai-model: 'meta-llama/Llama-3.3-70B-Instruct'
+ai-model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo'  # fast and capable
+ai-model: 'deepseek-ai/DeepSeek-V3.1'                  # Slower, but excellent for complex reasoning
+ai-model: 'moonshotai/Kimi-K2-Instruct-0905'           # Very capable, slightly higher cost
 ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
 ```
 
-### Local Models (Ollama)
+
+### OpenRouter
+Open router does have multiple free models available, but they are slow and can run into rate limiting issues.
 ```yaml
-ai-provider: 'ollama'
-ai-model: 'llama3'
-# No API key needed for local models
+ai-provider: 'openrouter'
+ai-model: 'qwen/qwen3-coder-30b-a3b-instruct'          # Smallest and cheapest model, does handle some tasks, but might not perform well in complex tasks due to the smaller model size.
+# Huge number of model options available both free and paid.
+ai-api-key: ${{ secrets.OPENROUTER_API_KEY }}
 ```
+
 
 ## Usage Examples
 
@@ -147,7 +137,7 @@ ai-model: 'llama3'
   with:
     # Required
     ai-provider: 'openai'
-    ai-model: 'gpt-4o'
+    ai-model: 'gpt-5-mini'
     github-token: ${{ secrets.GITHUB_TOKEN }}
     ai-api-key: ${{ secrets.OPENAI_API_KEY }}
     
@@ -241,4 +231,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Issues**: [GitHub Issues](https://github.com/alantheprice/ledit-agent/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/alantheprice/ledit/discussions)
-- **Documentation**: [Ledit Docs](https://github.com/alantheprice/ledit/wiki)
