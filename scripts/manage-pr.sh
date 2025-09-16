@@ -60,13 +60,12 @@ $(git diff --name-status origin/main..."$BRANCH_NAME")
 **Model**: $AI_MODEL via $AI_PROVIDER
 **Issue**: Closes #$ISSUE_NUMBER"
 
-    # Create the PR
+    # Create the PR (without assignee to avoid errors in GitHub Actions)
     PR_OUTPUT=$(gh pr create \
         --title "fix: Resolve issue #$ISSUE_NUMBER" \
         --body "$PR_BODY" \
         --base main \
-        --head "$BRANCH_NAME" \
-        --assignee "@me")
+        --head "$BRANCH_NAME")
     
     # Extract PR number and URL
     PR_URL="$PR_OUTPUT"
