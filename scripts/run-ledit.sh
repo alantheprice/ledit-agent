@@ -176,6 +176,6 @@ if [ $EXIT_CODE -ne 0 ]; then
         echo "❌ Ledit agent failed with exit code: $EXIT_CODE"
         exit $EXIT_CODE
     fi
-}
+fi
 
 echo "Ledit agent completed successfully"
