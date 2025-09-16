@@ -25,12 +25,12 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 
 ## Quick Start
 
-### 1. Add Workflow File
+### For Issue Solving
 
-Create `.github/workflows/ledit-agent.yml` in your repository:
+Create `.github/workflows/ledit-solve.yml` in your repository:
 
 ```yaml
-name: Ledit Agent
+name: Ledit Issue Solver
 
 on:
   issue_comment:
@@ -53,10 +53,51 @@ jobs:
       
       - uses: alantheprice/ledit-agent@v1
         with:
+          mode: 'solve'  # This is the default
           ai-provider: 'openai'
           ai-model: 'gpt-4o-mini'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           ai-api-key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+### For PR Reviews
+
+Create `.github/workflows/ledit-review.yml` in your repository:
+
+```yaml
+name: Ledit PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review-pr:
+    if: |
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review'))
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - uses: alantheprice/ledit-agent@v1
+        with:
+          mode: 'review'
+          ai-provider: 'deepinfra'
+          ai-model: 'deepseek-ai/DeepSeek-V3.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          review-type: 'comprehensive'
+          comment-threshold: 'medium'
 ```
 
 ### 2. Configure Repository Permissions
@@ -163,61 +204,7 @@ When you open or update a PR, the bot automatically reviews it if you have the w
 **PR Comment**: /review focus on security
 ```
 
-## PR Review Setup
 
-Add this workflow to enable automated PR reviews:
-
-```yaml
-# .github/workflows/pr-review.yml
-name: AI Code Review
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-  issue_comment:
-    types: [created]
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  review:
-    if: |
-      (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review'))
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - uses: alantheprice/ledit-agent@v1
-        with:
-          mode: 'review'
-          ai-provider: 'deepinfra'
-          ai-model: 'deepseek-ai/DeepSeek-V3.1'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
-          review-type: 'comprehensive'
-          comment-threshold: 'medium'
-```
-
-### Review Options
-
-- **review-type**: Focus of the review
-  - `comprehensive` - All aspects (default)
-  - `security` - Security vulnerabilities
-  - `performance` - Performance issues
-  - `style` - Code style and conventions
-
-- **comment-threshold**: When to post inline comments
-  - `low` - All issues including style
-  - `medium` - Significant issues only (default)
-  - `high` - Only critical issues
-
-- **summary-only**: Set to `true` for summary without inline comments
 
 ## Alternative: Using Personal Access Token (PAT)
 
@@ -234,35 +221,71 @@ If you prefer not to enable PR creation for GitHub Actions, you can use a Person
     # ... other options
 ```
 
-## Advanced Configuration
+## Configuration Reference
 
-### All Options
+### Common Options
+
+Both modes support these options:
 
 ```yaml
 - uses: alantheprice/ledit-agent@v1
   with:
-    # Mode
-    mode: 'solve'                    # 'solve' for issues, 'review' for PRs
-    
     # Required
-    ai-provider: 'openai'
-    ai-model: 'gpt-5-mini'
+    ai-provider: 'openai'           # Provider: openai, deepinfra, groq, etc.
+    ai-model: 'gpt-4o-mini'         # Model name for the provider
     github-token: ${{ secrets.GITHUB_TOKEN }}
     ai-api-key: ${{ secrets.OPENAI_API_KEY }}
     
-    # Optional - General
+    # Optional
     timeout-minutes: 20              # Max runtime (default: 10)
-    max-iterations: 30              # Max agent iterations (default: 20)
     ledit-version: 'latest'         # Specific ledit version
-    enable-mcp: 'true'              # Enable GitHub MCP tools
     debug: 'false'                  # Enable debug logging
-    workspace-dir: '.'              # Working directory
+```
+
+### Issue Solving Options
+
+Additional options for `mode: 'solve'` (default):
+
+```yaml
+- uses: alantheprice/ledit-agent@v1
+  with:
+    mode: 'solve'                    # Default mode
+    # ... common options ...
     
-    # Optional - Review Mode
-    review-type: 'comprehensive'     # Focus: comprehensive, security, performance, style
-    comment-threshold: 'medium'      # Comment level: low, medium, high
+    # Solve-specific options
+    max-iterations: 30              # Max agent iterations (default: 20)
+    enable-mcp: 'true'              # Enable GitHub MCP tools
+    workspace-dir: '.'              # Working directory
+```
+
+### PR Review Options
+
+Additional options for `mode: 'review'`:
+
+```yaml
+- uses: alantheprice/ledit-agent@v1
+  with:
+    mode: 'review'                   # Review mode
+    # ... common options ...
+    
+    # Review-specific options
+    review-type: 'comprehensive'     # Focus area (see below)
+    comment-threshold: 'medium'      # Comment verbosity (see below)
     summary-only: 'false'           # Only post summary, no inline comments
 ```
+
+**Review Types:**
+- `comprehensive` - All aspects (default)
+- `security` - Focus on security vulnerabilities
+- `performance` - Focus on performance issues
+- `style` - Focus on code style and conventions
+
+**Comment Thresholds:**
+- `low` - Comment on all issues including minor style
+- `medium` - Only significant issues (default)
+- `high` - Only critical issues
+
+## Advanced Configuration
 
 ### Custom Trigger Commands
 
