@@ -10,6 +10,14 @@ if [ "$LEDIT_DEBUG" == "true" ]; then
     echo "DEBUG: AI_API_KEY=${AI_API_KEY:0:10}..." # Print first 10 chars for security
 fi
 
+# Set default paths if not already set
+if [ -z "$ISSUE_CONTEXT_FILE" ]; then
+    ISSUE_CONTEXT_FILE="/tmp/ledit-issue-$ISSUE_NUMBER/context.md"
+fi
+if [ -z "$ISSUE_IMAGES_DIR" ]; then
+    ISSUE_IMAGES_DIR="/tmp/ledit-issue-$ISSUE_NUMBER/images"
+fi
+
 # Initialize workspace
 cd "$LEDIT_WORKSPACE"
 
@@ -108,6 +116,8 @@ Start by reading the issue context to understand what needs to be done."
 
 # Run ledit agent with timeout
 echo "Starting ledit agent with ${LEDIT_TIMEOUT_MINUTES} minute timeout..."
+echo "Using model: $AI_MODEL with provider: $AI_PROVIDER"
+
 timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent "$PROMPT" || {
     EXIT_CODE=$?
     if [ $EXIT_CODE -eq 124 ]; then
