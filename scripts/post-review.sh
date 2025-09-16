@@ -17,10 +17,20 @@ APPROVAL_STATUS=$(jq -r '.approval_status // "comment"' "$REVIEW_JSON")
 SUMMARY=$(jq -r '.summary // "Automated review completed"' "$REVIEW_JSON")
 GENERAL_FEEDBACK=$(jq -r '.general_feedback // ""' "$REVIEW_JSON")
 
+# Check if this is the bot's own PR
+CURRENT_USER=$(gh api /user --jq '.login' 2>/dev/null || echo "unknown")
+PR_AUTHOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login' 2>/dev/null || echo "unknown")
+
 # Map approval status to GitHub review event
 case "$APPROVAL_STATUS" in
     "approve")
-        REVIEW_EVENT="APPROVE"
+        # Can't approve own PRs - downgrade to comment
+        if [ "$CURRENT_USER" == "$PR_AUTHOR" ] || [[ "$PR_AUTHOR" == *"github-actions"* ]]; then
+            echo "Note: Cannot approve own PR, posting as comment instead"
+            REVIEW_EVENT="COMMENT"
+        else
+            REVIEW_EVENT="APPROVE"
+        fi
         ;;
     "request_changes")
         REVIEW_EVENT="REQUEST_CHANGES"
@@ -165,7 +175,10 @@ if [ "$SUMMARY_ONLY" != "true" ]; then
     else
         # No inline comments, just post the review
         echo "No inline comments, posting review summary"
-        gh pr review "$PR_NUMBER" --body "$REVIEW_BODY" --$( echo "$REVIEW_EVENT" | tr '[:upper:]' '[:lower:]' | tr '_' '-' )
+        if ! gh pr review "$PR_NUMBER" --body "$REVIEW_BODY" --$( echo "$REVIEW_EVENT" | tr '[:upper:]' '[:lower:]' | tr '_' '-' ) 2>&1; then
+            echo "Failed to post review, trying as comment"
+            gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY"
+        fi
     fi
     
     rm -f "$COMMENTS_FILE"
