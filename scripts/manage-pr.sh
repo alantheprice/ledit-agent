@@ -43,18 +43,6 @@ $(git log --oneline origin/main.."$BRANCH_NAME" | sed 's/^/- /')
 $(git diff --name-status origin/main..."$BRANCH_NAME")
 \`\`\`
 
-### ✅ Review Checklist
-- [ ] Code follows repository conventions and style
-- [ ] Tests have been added/updated as needed
-- [ ] Documentation has been updated if required
-- [ ] No sensitive information or credentials exposed
-
-### 🤝 Next Steps
-1. Review the changes carefully
-2. Run tests to ensure everything works
-3. Request changes if needed via PR comments
-4. Approve and merge when satisfied
-
 ---
 **Automated by**: [ledit-agent](https://github.com/alantheprice/ledit-agent)
 **Model**: $AI_MODEL via $AI_PROVIDER
