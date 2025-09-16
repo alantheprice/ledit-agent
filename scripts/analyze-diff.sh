@@ -36,7 +36,9 @@ case "$AI_PROVIDER" in
 esac
 
 # Build the prompt for ledit
-PROMPT="You are an expert code reviewer helping to review GitHub Pull Request #$PR_NUMBER.
+# Use a here-doc to avoid quote escaping issues
+read -r -d '' PROMPT << EOF
+You are an expert code reviewer helping to review GitHub Pull Request #$PR_NUMBER.
 
 The PR context and diff have been saved to: $PR_DATA_DIR/context.md and $PR_DATA_DIR/full.diff
 
@@ -52,7 +54,7 @@ DO NOT comment on:
 - Style preferences or conventions (unless they cause bugs)
 - Minor improvements or optimizations
 - Positive feedback or acknowledgments
-- Things that are "fine as-is"
+- Things that are \"fine as-is\"
 
 ONLY comment on problems that need fixing:
 1. Bugs and logic errors
@@ -106,16 +108,23 @@ Severity levels (use these to match comment threshold):
 
 After the JSON, provide a brief human-readable summary (2-3 sentences max) for the PR comment.
 
-Start by reading the context and diff files."
+Start by reading the context and diff files.
+EOF
+
+# Write prompt to file to avoid shell argument issues
+PROMPT_FILE="$PR_DATA_DIR/prompt.txt"
+echo "$PROMPT" > "$PROMPT_FILE"
 
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
 
 # Run ledit agent with review focus
 echo "Starting ledit agent for review..."
-# Pass the prompt via environment variable to avoid shell expansion issues
-export LEDIT_PROMPT="$PROMPT"
-timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" bash -c 'ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$LEDIT_PROMPT"' 2>&1 | tee "$REVIEW_OUTPUT"
+echo "Prompt length: $(echo -n "$PROMPT" | wc -c) characters"
+
+# Use a simple approach - read the prompt and pass it directly
+PROMPT_CONTENT=$(cat "$PROMPT_FILE")
+timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT_CONTENT" 2>&1 | tee "$REVIEW_OUTPUT"
 EXIT_CODE=${PIPESTATUS[0]}
 
 if [ $EXIT_CODE -ne 0 ]; then
