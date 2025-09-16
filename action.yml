@@ -138,6 +138,5 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         LEDIT_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
         LEDIT_DEBUG: ${{ inputs.debug }}
-      timeout-minutes: ${{ fromJSON(inputs.timeout-minutes) + 5 }}
       run: |
         ${{ github.action_path }}/scripts/main.sh
