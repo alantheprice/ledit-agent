@@ -18,6 +18,7 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 - 💬 **Inline Comments** - Specific feedback on exact lines of code
 - 🎯 **Configurable Focus** - Security, performance, style, or comprehensive
 - 📊 **Severity Levels** - Critical, major, minor, and suggestions
+- 🔗 **Issue Validation** - Verifies PR actually solves linked issues
 
 ### General
 - 🔧 **Multi-Provider Support** - Works with OpenAI, Groq, Gemini, DeepInfra, and more
@@ -291,6 +292,8 @@ Additional options for `mode: 'review'`:
 **Technical Note:** The review agent writes its analysis directly to files (`review.json` and `summary.md`) for reliable parsing, avoiding issues with stdout parsing.
 
 **GitHub Limitation:** The bot cannot approve its own PRs. If the review bot attempts to approve a PR it created (e.g., from issue solving mode), the approval will automatically be downgraded to a comment.
+
+**Issue-Aware Reviews:** When reviewing PRs, the bot automatically fetches linked issues (via #123 references, closing keywords, or branch names) and validates whether the implementation meets the issue requirements.
 
 ## Advanced Configuration
 
