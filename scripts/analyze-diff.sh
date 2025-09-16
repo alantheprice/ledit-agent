@@ -36,15 +36,18 @@ case "$AI_PROVIDER" in
 esac
 
 # Build the prompt for ledit
-# Use a here-doc to avoid quote escaping issues
-read -r -d '' PROMPT << EOF
-You are an expert code reviewer helping to review GitHub Pull Request #$PR_NUMBER.
+echo "Building prompt for PR review..."
 
-The PR context and diff have been saved to: $PR_DATA_DIR/context.md and $PR_DATA_DIR/full.diff
+# Write the prompt directly to a file
+PROMPT_FILE="$PR_DATA_DIR/prompt.txt"
+cat > "$PROMPT_FILE" << 'PROMPT_EOF'
+You are an expert code reviewer helping to review GitHub Pull Request #PR_NUMBER_PLACEHOLDER.
+
+The PR context and diff have been saved to: PR_DATA_DIR_PLACEHOLDER/context.md and PR_DATA_DIR_PLACEHOLDER/full.diff
 
 Your task is to identify issues that NEED TO BE FIXED. Only comment on actual problems, not observations.
 
-Comment threshold is '$COMMENT_THRESHOLD':
+Comment threshold is 'COMMENT_THRESHOLD_PLACEHOLDER':
 - high: ONLY critical issues (will break production, security vulnerabilities, data loss risks)
 - medium: Moderate risks (bugs, security concerns, significant performance issues, logic errors)  
 - low: All issues including code quality, but still ONLY things that need fixing (no nitpicks)
@@ -54,7 +57,7 @@ DO NOT comment on:
 - Style preferences or conventions (unless they cause bugs)
 - Minor improvements or optimizations
 - Positive feedback or acknowledgments
-- Things that are \"fine as-is\"
+- Things that are "fine as-is"
 
 ONLY comment on problems that need fixing:
 1. Bugs and logic errors
@@ -75,7 +78,7 @@ Maximum comments by PR size:
 
 These are MAXIMUMS. If there are no issues, make NO comments.
 
-Based on review type '$REVIEW_TYPE':
+Based on review type 'REVIEW_TYPE_PLACEHOLDER':
 - comprehensive: Look for all types of issues
 - security: Focus only on security issues
 - performance: Focus only on performance issues
@@ -85,18 +88,18 @@ Output format:
 FIRST output this exact line: === JSON START ===
 Then output ONLY the JSON object (no markdown code blocks):
 {
-  \"summary\": \"Brief 1-2 sentence assessment of issues found (or 'No issues found')\",
-  \"approval_status\": \"approve|request_changes|comment\",
-  \"comments\": [
+  "summary": "Brief 1-2 sentence assessment of issues found (or 'No issues found')",
+  "approval_status": "approve|request_changes|comment",
+  "comments": [
     {
-      \"file\": \"path/to/file.js\",
-      \"line\": 42,
-      \"side\": \"RIGHT\",
-      \"body\": \"Specific issue that needs fixing and how to fix it\",
-      \"severity\": \"critical|major|minor|suggestion\"
+      "file": "path/to/file.js",
+      "line": 42,
+      "side": "RIGHT",
+      "body": "Specific issue that needs fixing and how to fix it",
+      "severity": "critical|major|minor|suggestion"
     }
   ],
-  \"general_feedback\": \"Only if there are broader architectural concerns\"
+  "general_feedback": "Only if there are broader architectural concerns"
 }
 Then output this exact line: === JSON END ===
 
@@ -109,23 +112,34 @@ Severity levels (use these to match comment threshold):
 After the JSON, provide a brief human-readable summary (2-3 sentences max) for the PR comment.
 
 Start by reading the context and diff files.
-EOF
+PROMPT_EOF
 
-# Write prompt to file to avoid shell argument issues
-PROMPT_FILE="$PR_DATA_DIR/prompt.txt"
-echo "$PROMPT" > "$PROMPT_FILE"
+# Replace placeholders with actual values
+sed -i "s|PR_NUMBER_PLACEHOLDER|$PR_NUMBER|g" "$PROMPT_FILE"
+sed -i "s|PR_DATA_DIR_PLACEHOLDER|$PR_DATA_DIR|g" "$PROMPT_FILE"
+sed -i "s|COMMENT_THRESHOLD_PLACEHOLDER|$COMMENT_THRESHOLD|g" "$PROMPT_FILE"
+sed -i "s|REVIEW_TYPE_PLACEHOLDER|$REVIEW_TYPE|g" "$PROMPT_FILE"
+
+# Debug: Check if prompt was written correctly
+echo "Prompt written to: $PROMPT_FILE"
+echo "Prompt length: $(wc -c < "$PROMPT_FILE") characters"
+echo "First 100 chars of prompt: $(head -c 100 "$PROMPT_FILE")"
 
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
 
 # Run ledit agent with review focus
 echo "Starting ledit agent for review..."
-echo "Prompt length: $(echo -n "$PROMPT" | wc -c) characters"
 
-# Use a simple approach - read the prompt and pass it directly
-PROMPT_CONTENT=$(cat "$PROMPT_FILE")
-timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT_CONTENT" 2>&1 | tee "$REVIEW_OUTPUT"
-EXIT_CODE=${PIPESTATUS[0]}
+# Try a different approach - use the file directly
+if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
+    EXIT_CODE=$?
+    echo "❌ Ledit command failed with exit code: $EXIT_CODE"
+    echo "Review output:"
+    cat "$REVIEW_OUTPUT"
+else
+    EXIT_CODE=0
+fi
 
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ Ledit agent failed with exit code: $EXIT_CODE"
