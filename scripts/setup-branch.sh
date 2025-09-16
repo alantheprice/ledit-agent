@@ -7,6 +7,12 @@ echo "Setting up branch: $BRANCH_NAME"
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
+# Handle shallow clones
+if [ -f .git/shallow ]; then
+    echo "Detected shallow clone, fetching full history..."
+    git fetch --unshallow || true
+fi
+
 # Fetch latest changes
 git fetch origin
 

@@ -5,10 +5,26 @@ echo "Managing pull request..."
 
 # Push changes to remote
 echo "Pushing changes to remote..."
+
+# Ensure we have the latest remote references
+echo "Fetching latest remote references..."
+git fetch origin main || git fetch origin || true
+
 git push -u origin "$BRANCH_NAME"
 
+# Detect the default branch
+DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || echo "main")
+echo "Default branch: $DEFAULT_BRANCH"
+
+# Ensure we have the default branch locally
+if ! git show-ref --verify --quiet "refs/heads/$DEFAULT_BRANCH"; then
+    echo "Creating local $DEFAULT_BRANCH branch..."
+    git checkout -b "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH" || true
+    git checkout "$BRANCH_NAME"
+fi
+
 # Check if PR already exists
-EXISTING_PR=$(gh pr list --base main --head "$BRANCH_NAME" --json number --jq '.[0].number' || echo "")
+EXISTING_PR=$(gh pr list --base "$DEFAULT_BRANCH" --head "$BRANCH_NAME" --json number --jq '.[0].number' || echo "")
 
 if [ -n "$EXISTING_PR" ]; then
     echo "Pull request #$EXISTING_PR already exists, updating..."
@@ -36,11 +52,11 @@ Please see issue #$ISSUE_NUMBER for full context.
 ### 🔧 Changes Made
 The AI agent analyzed the issue description, comments, and any attached images to implement this solution.
 
-$(git log --oneline origin/main.."$BRANCH_NAME" | sed 's/^/- /')
+$(git log --oneline "origin/$DEFAULT_BRANCH..$BRANCH_NAME" 2>/dev/null | sed 's/^/- /' || git log --oneline -5 | sed 's/^/- /')
 
 ### 📁 Files Changed
 \`\`\`
-$(git diff --name-status origin/main..."$BRANCH_NAME")
+$(git diff --name-status "origin/$DEFAULT_BRANCH...$BRANCH_NAME" 2>/dev/null || git diff --name-status HEAD~ 2>/dev/null || git status --porcelain)
 \`\`\`
 
 ---
@@ -60,7 +76,7 @@ $(git diff --name-status origin/main..."$BRANCH_NAME")
     PR_OUTPUT=$(gh pr create \
         --title "fix: Resolve issue #$ISSUE_NUMBER" \
         --body "$PR_BODY" \
-        --base main \
+        --base "$DEFAULT_BRANCH" \
         --head "$BRANCH_NAME")
     
     # Extract PR number and URL
