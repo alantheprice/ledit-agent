@@ -281,9 +281,11 @@ Additional options for `mode: 'review'`:
 - `style` - Focus on code style and conventions
 
 **Comment Thresholds:**
-- `low` - Comment on all issues including minor style
-- `medium` - Only significant issues (default)
-- `high` - Only critical issues
+- `low` - All issues that need fixing (bugs, errors, quality problems)
+- `medium` - Moderate risks and above (bugs, security, performance issues)
+- `high` - Critical issues only (crashes, security vulnerabilities, data loss)
+
+**Note:** The reviewer only comments on problems that need to be fixed. It won't provide positive feedback or style suggestions unless they represent actual issues. This keeps reviews focused and actionable.
 
 ## Advanced Configuration
 

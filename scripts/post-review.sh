@@ -96,21 +96,31 @@ if [ "$SUMMARY_ONLY" != "true" ]; then
                 BODY=$(echo "$comment" | jq -r '.body')
                 SEVERITY=$(echo "$comment" | jq -r '.severity // "suggestion"')
                 
-                # Check comment threshold
+                # Filter comments based on threshold - only post actionable issues
                 case "$COMMENT_THRESHOLD" in
                     "high")
-                        # Only post critical comments
+                        # High threshold: Only critical issues that must be fixed
                         if [ "$SEVERITY" != "critical" ]; then
                             continue
                         fi
                         ;;
                     "medium")
-                        # Skip minor suggestions
+                        # Medium threshold: Moderate risk issues and above
                         if [ "$SEVERITY" == "suggestion" ] || [ "$SEVERITY" == "minor" ]; then
                             continue
                         fi
                         ;;
-                    # "low" - post everything
+                    "low")
+                        # Low threshold: All issues including nitpicks, but no positive feedback
+                        # Skip any purely positive comments
+                        if echo "$BODY" | grep -qiE "^[[:space:]]*(excellent|great|good job|well.*(done|written)|nice|perfect|correct|appropriate)[[:space:]]*[\.!]?[[:space:]]*$"; then
+                            continue
+                        fi
+                        # Skip comments that don't suggest any changes
+                        if ! echo "$BODY" | grep -qiE "(should|could|consider|recommend|suggest|fix|change|update|improve|avoid|don't|issue|problem|error|warning|missing|incorrect|wrong)"; then
+                            continue
+                        fi
+                        ;;
                 esac
                 
                 # Add severity emoji to comment

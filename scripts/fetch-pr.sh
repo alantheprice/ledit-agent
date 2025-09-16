@@ -24,6 +24,26 @@ gh pr diff "$PR_NUMBER" > "$PR_DATA_DIR/full.diff"
 # Fetch file list with changes stats
 gh pr view "$PR_NUMBER" --json files --jq '.files[] | "\(.path) +\(.additions) -\(.deletions)"' > "$PR_DATA_DIR/files.txt"
 
+# Detect if this is a documentation-only PR
+DOC_ONLY="true"
+while IFS= read -r file; do
+    filename=$(echo "$file" | cut -d' ' -f1)
+    # Check if any non-documentation file is changed
+    if ! echo "$filename" | grep -qE "\.(md|txt|rst|adoc)$|^docs/|^documentation/|README|CHANGELOG|LICENSE"; then
+        DOC_ONLY="false"
+        break
+    fi
+done < "$PR_DATA_DIR/files.txt"
+
+echo "DOC_ONLY=$DOC_ONLY" >> $GITHUB_ENV
+
+# Auto-adjust comment threshold for doc-only changes
+if [ "$DOC_ONLY" == "true" ] && [ "$COMMENT_THRESHOLD" == "low" ]; then
+    echo "Detected documentation-only changes, adjusting comment threshold to medium"
+    COMMENT_THRESHOLD="medium"
+    echo "COMMENT_THRESHOLD=medium" >> $GITHUB_ENV
+fi
+
 # Fetch existing comments to avoid duplicates
 echo "Fetching existing comments..."
 gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' > "$PR_DATA_DIR/existing_comments.txt" 2>/dev/null || true
@@ -46,6 +66,7 @@ $(cat "$PR_DATA_DIR/files.txt")
 - Review Type: $REVIEW_TYPE
 - Comment Threshold: $COMMENT_THRESHOLD
 - Summary Only: $SUMMARY_ONLY
+- Documentation Only: $DOC_ONLY
 
 Please review this pull request and provide:
 1. A high-level summary of the changes

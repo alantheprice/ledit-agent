@@ -40,42 +40,71 @@ PROMPT="You are an expert code reviewer helping to review GitHub Pull Request #$
 
 The PR context and diff have been saved to: $PR_DATA_DIR/context.md and $PR_DATA_DIR/full.diff
 
-Your review should be thorough but constructive. Focus on:
-1. Bugs and potential issues
-2. Security vulnerabilities
-3. Performance concerns
-4. Code quality and maintainability
-5. Best practices and patterns
-
-Based on the review type '$REVIEW_TYPE', adjust your focus:
-- comprehensive: Review all aspects thoroughly
-- security: Focus primarily on security issues
-- performance: Focus on performance implications
-- style: Focus on code style and conventions
+Your task is to identify issues that NEED TO BE FIXED. Only comment on actual problems, not observations.
 
 Comment threshold is '$COMMENT_THRESHOLD':
-- low: Comment on everything, including minor style issues
-- medium: Comment on significant issues and improvements
-- high: Only comment on critical bugs or major concerns
+- high: ONLY critical issues (will break production, security vulnerabilities, data loss risks)
+- medium: Moderate risks (bugs, security concerns, significant performance issues, logic errors)  
+- low: All issues including code quality, but still ONLY things that need fixing (no nitpicks)
+
+DO NOT comment on:
+- Code that works correctly
+- Style preferences or conventions (unless they cause bugs)
+- Minor improvements or optimizations
+- Positive feedback or acknowledgments
+- Things that are "fine as-is"
+
+ONLY comment on problems that need fixing:
+1. Bugs and logic errors
+2. Security vulnerabilities  
+3. Performance issues that will cause problems
+4. Missing critical error handling
+5. Incorrect implementations
+
+For documentation:
+- ONLY comment on factual errors or broken links
+- Skip style/formatting unless it makes docs unusable
+
+Maximum comments by PR size:
+- 1-10 lines: 1 comment max
+- 10-50 lines: 3 comments max
+- 50-200 lines: 5 comments max
+- 200+ lines: 10 comments max
+
+These are MAXIMUMS. If there are no issues, make NO comments.
+
+Based on review type '$REVIEW_TYPE':
+- comprehensive: Look for all types of issues
+- security: Focus only on security issues
+- performance: Focus only on performance issues
+- style: Skip review if comment threshold is medium/high
 
 Output format:
-1. First, provide a JSON object with your findings structured as:
+FIRST output this exact line: === JSON START ===
+Then output ONLY the JSON object (no markdown code blocks):
 {
-  \"summary\": \"Overall assessment of the PR\",
+  \"summary\": \"Brief 1-2 sentence assessment of issues found (or 'No issues found')\",
   \"approval_status\": \"approve|request_changes|comment\",
   \"comments\": [
     {
       \"file\": \"path/to/file.js\",
       \"line\": 42,
       \"side\": \"RIGHT\",
-      \"body\": \"Your comment here\",
+      \"body\": \"Specific issue that needs fixing and how to fix it\",
       \"severity\": \"critical|major|minor|suggestion\"
     }
   ],
-  \"general_feedback\": \"Additional feedback not tied to specific lines\"
+  \"general_feedback\": \"Only if there are broader architectural concerns\"
 }
+Then output this exact line: === JSON END ===
 
-2. Then provide a human-readable summary for the PR comment.
+Severity levels (use these to match comment threshold):
+- critical: Will cause crashes, data loss, or security breaches
+- major: Bugs that affect functionality or moderate security risks
+- minor: Code quality issues that should be fixed
+- suggestion: Nice-to-have improvements (only for low threshold)
+
+After the JSON, provide a brief human-readable summary (2-3 sentences max) for the PR comment.
 
 Start by reading the context and diff files."
 
@@ -93,12 +122,12 @@ if [ $EXIT_CODE -ne 0 ]; then
     exit $EXIT_CODE
 fi
 
-# Extract JSON from the output (looking for the JSON block)
+# Extract JSON from the output using the markers
 echo "Extracting review results..."
-awk '/^{/,/^}/' "$REVIEW_OUTPUT" > "$PR_DATA_DIR/review.json" || true
+sed -n '/=== JSON START ===/,/=== JSON END ===/p' "$REVIEW_OUTPUT" | grep -v "=== JSON" > "$PR_DATA_DIR/review.json" || true
 
-# Extract human-readable summary (everything after the JSON)
-awk 'BEGIN{p=0} /^}$/{p=1;next} p==1' "$REVIEW_OUTPUT" > "$PR_DATA_DIR/summary.md" || true
+# Extract human-readable summary (everything after JSON END marker)
+sed -n '/=== JSON END ===/,$p' "$REVIEW_OUTPUT" | tail -n +2 > "$PR_DATA_DIR/summary.md" || true
 
 # Extract cost information if available
 COST_LINE=$(grep -o "💰.*\$[0-9.]*" "$REVIEW_OUTPUT" | tail -1 || true)
