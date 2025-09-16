@@ -240,7 +240,7 @@ Both modes support these options:
     
     # Optional
     timeout-minutes: 20              # Max runtime (default: 10)
-    ledit-version: 'latest'         # Specific ledit version
+    ledit-version: 'latest'         # Specific ledit version (e.g., 'v0.5.10')
     debug: 'false'                  # Enable debug logging
 ```
 
@@ -385,6 +385,12 @@ If you see: `GitHub Actions is not permitted to create or approve pull requests`
 1. Go to **Settings** → **Actions** → **General**
 2. Under **Workflow permissions**, check **Allow GitHub Actions to create and approve pull requests**
 3. Save and try again
+
+### Wrong Ledit Version Installed
+If the action installs an older version (e.g., v0.5.9) when 'latest' is specified:
+- Specify the exact version: `ledit-version: 'v0.5.10'`
+- This can happen due to Go module proxy caching
+- Minimum v0.5.10 is required for max-iterations support
 
 ## Contributing
 
