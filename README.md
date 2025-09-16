@@ -49,7 +49,17 @@ jobs:
           ai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-### 2. Add API Key
+### 2. Configure Repository Permissions
+
+**Important**: By default, GitHub Actions cannot create pull requests. You need to enable this:
+
+1. Go to **Settings** → **Actions** → **General**
+2. Scroll down to **Workflow permissions**
+3. Select **Read and write permissions**
+4. Check **Allow GitHub Actions to create and approve pull requests**
+5. Click **Save**
+
+### 3. Add API Key
 
 1. Go to **Settings** → **Secrets and variables** → **Actions**
 2. Click **New repository secret**
@@ -59,7 +69,7 @@ jobs:
    - Gemini: `GEMINI_API_KEY`
    - DeepInfra: `DEEPINFRA_API_KEY`
 
-### 3. Use It!
+### 4. Use It!
 
 1. Create an issue describing what you want
 2. Comment `/ledit` to trigger the agent
@@ -126,6 +136,21 @@ ai-api-key: ${{ secrets.OPENROUTER_API_KEY }}
 **Comment**: /ledit
 **Later**: /ledit add input validation
 **Later**: /ledit add rate limiting
+```
+
+## Alternative: Using Personal Access Token (PAT)
+
+If you prefer not to enable PR creation for GitHub Actions, you can use a Personal Access Token:
+
+1. [Create a PAT](https://github.com/settings/tokens) with `repo` scope
+2. Add it as a secret named `GH_PAT`
+3. Update your workflow:
+
+```yaml
+- uses: alantheprice/ledit-agent@v1
+  with:
+    github-token: ${{ secrets.GH_PAT }}  # Use PAT instead
+    # ... other options
 ```
 
 ## Advanced Configuration
@@ -218,6 +243,12 @@ on:
 - Issue might need more context
 - Try adding specific instructions
 - Check action logs for errors
+
+### Pull Request Creation Failed
+If you see: `GitHub Actions is not permitted to create or approve pull requests`
+1. Go to **Settings** → **Actions** → **General**
+2. Under **Workflow permissions**, check **Allow GitHub Actions to create and approve pull requests**
+3. Save and try again
 
 ## Contributing
 
