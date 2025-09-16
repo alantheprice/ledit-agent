@@ -295,6 +295,8 @@ Additional options for `mode: 'review'`:
 
 **Issue-Aware Reviews:** When reviewing PRs, the bot automatically fetches linked issues (via #123 references, closing keywords, or branch names) and validates whether the implementation meets the issue requirements.
 
+**Codebase Validation:** The reviewer has full access to explore the repository, not just the diff. It verifies claims by checking actual files, dependencies, and implementations rather than making assumptions.
+
 ## Advanced Configuration
 
 ### Custom Trigger Commands

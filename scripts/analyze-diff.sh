@@ -45,6 +45,11 @@ You are an expert code reviewer helping to review GitHub Pull Request #PR_NUMBER
 
 The PR context and diff have been saved to: PR_DATA_DIR_PLACEHOLDER/context.md and PR_DATA_DIR_PLACEHOLDER/full.diff
 
+You are running in the actual repository at the root directory, so you have FULL ACCESS to explore the codebase to verify claims.
+Your current working directory is the repository root. You can use standard commands to explore and verify the codebase.
+
+DO NOT make assumptions based only on the diff - validate everything against the actual code.
+
 IMPORTANT: The context.md file contains linked GitHub issues if this PR claims to fix any. If issues are linked:
 1. Verify the implementation actually solves the stated problems
 2. Check if all requirements from the issue are met
@@ -89,7 +94,13 @@ Based on review type 'REVIEW_TYPE_PLACEHOLDER':
 - performance: Focus only on performance issues
 - style: Skip review if comment threshold is medium/high
 
-After analyzing the PR, write your review to these files:
+CRITICAL: You have full access to the codebase. Use the following tools to validate claims:
+- Use 'find' or 'ls' to check if files/directories mentioned in the README actually exist
+- Use 'cat' or 'grep' to verify technology claims (e.g., check package.json for dependencies)
+- Use 'rg' (ripgrep) to search for specific implementations across the codebase
+- DO NOT make assumptions - verify everything against the actual code
+
+After analyzing the PR and validating against the codebase, write your review to these files:
 1. Write the JSON review object to: PR_DATA_DIR_PLACEHOLDER/review.json
 2. Write a 2-3 sentence human-readable summary to: PR_DATA_DIR_PLACEHOLDER/summary.md
 
@@ -115,7 +126,16 @@ Severity levels (match to comment threshold):
 - minor: Code quality issues that should be fixed
 - suggestion: Nice-to-have improvements (only for low threshold)
 
-Start by reading the context and diff files, then write your review to the specified files.
+Start by:
+1. Reading the context and diff files to understand the changes
+2. Exploring the actual codebase to verify any claims made in the PR
+3. Writing your review to the specified files
+
+Verify any claims made in the PR by checking the actual codebase:
+- Dependencies and libraries mentioned
+- Files and directories referenced
+- Features and functionality described
+- Any technical claims or implementation details
 PROMPT_EOF
 
 # Replace placeholders with actual values
@@ -132,8 +152,12 @@ echo "First 100 chars of prompt: $(head -c 100 "$PROMPT_FILE")"
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
 
-# Run ledit agent with review focus
+# Run ledit agent with review focus in the repository directory
 echo "Starting ledit agent for review..."
+echo "Working directory: $(pwd)"
+
+# Ensure we're in the repository root for code exploration
+cd "$GITHUB_WORKSPACE" || cd "$(git rev-parse --show-toplevel)" || true
 
 # Try a different approach - use the file directly
 if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
