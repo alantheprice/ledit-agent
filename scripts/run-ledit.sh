@@ -32,12 +32,15 @@ fi
 # Create config.json with the model configuration
 cat > .ledit/config.json << EOF
 {
-  "editing_model": "$AI_MODEL",
-  "summary_model": "$AI_MODEL", 
-  "workspace_analysis_model": "$AI_MODEL",
-  "orchestration_model": "$AI_MODEL",
-  "code_review_model": "$AI_MODEL",
-  "embedding_model": "$AI_MODEL",
+  "provider_models": {
+    "$AI_PROVIDER": "$AI_MODEL"
+  },
+  "editing_model": "$AI_PROVIDER:$AI_MODEL",
+  "summary_model": "$AI_PROVIDER:$AI_MODEL", 
+  "workspace_analysis_model": "$AI_PROVIDER:$AI_MODEL",
+  "orchestration_model": "$AI_PROVIDER:$AI_MODEL",
+  "code_review_model": "$AI_PROVIDER:$AI_MODEL",
+  "embedding_model": "$AI_PROVIDER:$AI_MODEL",
   "autotrack": false,
   "check_for_keys": false,
   "provider": "$AI_PROVIDER"
