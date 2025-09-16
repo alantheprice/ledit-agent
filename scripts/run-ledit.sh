@@ -75,6 +75,13 @@ Your task:
 6. Add tests if appropriate
 
 If there are existing PRs with feedback, make sure to address the review comments.
+
+For image-related tasks:
+- Check the image mapping in the context to understand which image is which
+- Use vision tools to analyze image content if filenames aren't clear
+- When replacing images/assets, find the current implementation first
+- Copy new image files to the appropriate asset directories
+- Update all references to point to the new images
 "
 
 # Add user-specific prompt if provided

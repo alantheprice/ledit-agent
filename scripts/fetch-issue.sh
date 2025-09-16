@@ -134,22 +134,44 @@ fi
 echo "Extracting and downloading images..."
 mkdir -p "$ISSUE_DATA_DIR/images"
 
+# Create image mapping file
+IMAGE_MAP="$ISSUE_DATA_DIR/image_map.txt"
+> "$IMAGE_MAP"
+
 # Function to extract and download images
 download_images() {
     local text="$1"
     local prefix="$2"
     local count=0
     
-    # Extract markdown image links ![alt](url)
-    echo "$text" | grep -oE '!\[([^\]]*)\]\(([^)]+)\)' | sed -E 's/!\[([^\]]*)\]\(([^)]+)\)/\2/' | while read -r url; do
+    # Extract markdown image links ![alt](url) with alt text preserved
+    echo "$text" | grep -oE '!\[([^\]]*)\]\(([^)]+)\)' | while IFS= read -r match; do
+        alt_text=$(echo "$match" | sed -E 's/!\[([^\]]*)\]\(([^)]+)\)/\1/')
+        url=$(echo "$match" | sed -E 's/!\[([^\]]*)\]\(([^)]+)\)/\2/')
+        
         if [[ "$url" =~ ^https?:// ]]; then
             count=$((count + 1))
             ext="${url##*.}"
             ext="${ext%%\?*}" # Remove query params
             [[ "$ext" =~ ^(jpg|jpeg|png|gif|webp|svg)$ ]] || ext="png"
-            filename="${prefix}_${count}.${ext}"
+            
+            # Try to use alt text or URL filename for better naming
+            if [[ "$alt_text" =~ \.(png|jpg|jpeg|svg|gif)$ ]]; then
+                # Alt text looks like a filename, use it
+                filename="${alt_text// /_}"
+            elif [[ "$url" =~ /([^/]+\.(png|jpg|jpeg|svg|gif))(\?|$) ]]; then
+                # Extract filename from URL
+                filename=$(echo "$url" | sed -E 's/.*\/([^/]+\.(png|jpg|jpeg|svg|gif))(\?.*)?$/\1/')
+            else
+                # Fallback to generic naming
+                filename="${prefix}_${count}.${ext}"
+            fi
+            
             echo "  Downloading: $url -> $filename"
             curl -sL "$url" -o "$ISSUE_DATA_DIR/images/$filename" || echo "  Failed to download: $url"
+            
+            # Save mapping for agent reference
+            echo "$filename|$alt_text|$url" >> "$IMAGE_MAP"
         fi
     done
     
@@ -178,6 +200,28 @@ done
 # List downloaded images
 IMAGE_COUNT=$(find "$ISSUE_DATA_DIR/images" -type f 2>/dev/null | wc -l)
 echo "Downloaded $IMAGE_COUNT images"
+
+# Add image information to context
+if [ "$IMAGE_COUNT" -gt 0 ]; then
+    echo "" >> "$ISSUE_DATA_DIR/context.md"
+    echo "## Attached Images" >> "$ISSUE_DATA_DIR/context.md"
+    echo "" >> "$ISSUE_DATA_DIR/context.md"
+    echo "The following images were downloaded to $ISSUE_DATA_DIR/images/:" >> "$ISSUE_DATA_DIR/context.md"
+    echo "" >> "$ISSUE_DATA_DIR/context.md"
+    
+    if [ -f "$IMAGE_MAP" ]; then
+        while IFS='|' read -r filename alt_text url; do
+            echo "- **$filename**: $alt_text" >> "$ISSUE_DATA_DIR/context.md"
+        done < "$IMAGE_MAP"
+    else
+        ls -1 "$ISSUE_DATA_DIR/images/" | while read -r img; do
+            echo "- $img" >> "$ISSUE_DATA_DIR/context.md"
+        done
+    fi
+    
+    echo "" >> "$ISSUE_DATA_DIR/context.md"
+    echo "Note: Based on the issue description, identify which images are 'old' vs 'new' by their filenames or by analyzing their content." >> "$ISSUE_DATA_DIR/context.md"
+fi
 
 # Export paths for other scripts
 echo "ISSUE_CONTEXT_FILE=$ISSUE_DATA_DIR/context.md" >> $GITHUB_ENV
