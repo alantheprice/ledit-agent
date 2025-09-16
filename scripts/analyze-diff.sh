@@ -108,13 +108,20 @@ After the JSON, provide a brief human-readable summary (2-3 sentences max) for t
 
 Start by reading the context and diff files."
 
+# Create a temporary file for the prompt
+PROMPT_FILE=$(mktemp)
+echo "$PROMPT" > "$PROMPT_FILE"
+
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
 
-# Run ledit agent with review focus
+# Run ledit agent with review focus using stdin for the prompt
 echo "Starting ledit agent for review..."
-timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT" 2>&1 | tee "$REVIEW_OUTPUT"
+timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" < "$PROMPT_FILE" 2>&1 | tee "$REVIEW_OUTPUT"
 EXIT_CODE=${PIPESTATUS[0]}
+
+# Clean up prompt file
+rm -f "$PROMPT_FILE"
 
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ Ledit agent failed with exit code: $EXIT_CODE"
