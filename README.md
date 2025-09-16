@@ -11,6 +11,7 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 - 🖼️ **Vision Support** - Processes mockups and screenshots to implement UIs
 - 🔄 **Iterative Development** - Refine implementations with follow-up commands
 - 🌿 **Smart Git Management** - Creates branches and pull requests automatically
+- 🔗 **PR-Aware Context** - Automatically includes PR reviews and feedback when working on issues
 
 ### Code Review
 - 🔍 **Comprehensive PR Analysis** - Thorough review of code changes
@@ -343,6 +344,7 @@ on:
 - **Add Examples** - Show desired input/output
 - **Attach Mockups** - Visual references for UI work
 - **Use Labels** - Help categorize the type of work
+- **PR Feedback** - The agent automatically sees PR reviews and comments, so you can ask it to "address the PR feedback" or "fix the issues mentioned in the review"
 
 ### For Cost Control
 - Start with cheaper models (`gpt-4o-mini`, `gemini-flash`)

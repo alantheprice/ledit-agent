@@ -57,17 +57,24 @@ esac
 PROMPT="You are helping to solve GitHub issue #$ISSUE_NUMBER from the repository $GITHUB_REPOSITORY.
 
 The issue context and details have been saved to: $ISSUE_CONTEXT_FILE
+This file includes:
+- Issue description and comments
+- Any associated Pull Requests with their reviews and feedback
+- Code review comments from PRs
+
 Images from the issue (if any) have been saved to: $ISSUE_IMAGES_DIR
 
 IMPORTANT: You are working on branch '$BRANCH_NAME' which follows the pattern 'issue/<number>'.
 
 Your task:
-1. Read the issue context from $ISSUE_CONTEXT_FILE
+1. Read the issue context from $ISSUE_CONTEXT_FILE (includes PR feedback if any)
 2. Analyze any images in $ISSUE_IMAGES_DIR using the vision tools
 3. Implement the necessary changes to solve the issue
-4. Follow the repository's code style and conventions
-5. Add tests if appropriate
+4. Address any PR review feedback mentioned in the context
+5. Follow the repository's code style and conventions
+6. Add tests if appropriate
 
+If there are existing PRs with feedback, make sure to address the review comments.
 "
 
 # Add user-specific prompt if provided
