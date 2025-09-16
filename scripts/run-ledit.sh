@@ -29,12 +29,22 @@ if [ -f ~/.ledit/api_keys.json ]; then
     cp ~/.ledit/api_keys.json .ledit/
 fi
 
-# Create config.json with the model configuration
+# Create agent config in .ledit directory
 cat > .ledit/config.json << EOF
 {
+  "last_used_provider": "$AI_PROVIDER",
   "provider_models": {
     "$AI_PROVIDER": "$AI_MODEL"
   },
+  "provider_priority": ["$AI_PROVIDER", "openai", "openrouter", "deepinfra", "ollama", "cerebras", "groq", "deepseek"],
+  "preferences": {},
+  "version": "1.0"
+}
+EOF
+
+# Also create the main ledit config.json if needed
+cat > .ledit/ledit_config.json << EOF
+{
   "editing_model": "$AI_PROVIDER:$AI_MODEL",
   "summary_model": "$AI_PROVIDER:$AI_MODEL", 
   "workspace_analysis_model": "$AI_PROVIDER:$AI_MODEL",
