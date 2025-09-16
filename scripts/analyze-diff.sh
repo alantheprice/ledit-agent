@@ -84,9 +84,11 @@ Based on review type 'REVIEW_TYPE_PLACEHOLDER':
 - performance: Focus only on performance issues
 - style: Skip review if comment threshold is medium/high
 
-Output format:
-FIRST output this exact line: === JSON START ===
-Then output ONLY the JSON object (no markdown code blocks):
+After analyzing the PR, write your review to these files:
+1. Write the JSON review object to: PR_DATA_DIR_PLACEHOLDER/review.json
+2. Write a 2-3 sentence human-readable summary to: PR_DATA_DIR_PLACEHOLDER/summary.md
+
+The JSON format should be:
 {
   "summary": "Brief 1-2 sentence assessment of issues found (or 'No issues found')",
   "approval_status": "approve|request_changes|comment",
@@ -101,17 +103,14 @@ Then output ONLY the JSON object (no markdown code blocks):
   ],
   "general_feedback": "Only if there are broader architectural concerns"
 }
-Then output this exact line: === JSON END ===
 
-Severity levels (use these to match comment threshold):
+Severity levels (match to comment threshold):
 - critical: Will cause crashes, data loss, or security breaches
 - major: Bugs that affect functionality or moderate security risks
 - minor: Code quality issues that should be fixed
 - suggestion: Nice-to-have improvements (only for low threshold)
 
-After the JSON, provide a brief human-readable summary (2-3 sentences max) for the PR comment.
-
-Start by reading the context and diff files.
+Start by reading the context and diff files, then write your review to the specified files.
 PROMPT_EOF
 
 # Replace placeholders with actual values
@@ -147,12 +146,31 @@ if [ $EXIT_CODE -ne 0 ]; then
     exit $EXIT_CODE
 fi
 
-# Extract JSON from the output using the markers
-echo "Extracting review results..."
-sed -n '/=== JSON START ===/,/=== JSON END ===/p' "$REVIEW_OUTPUT" | grep -v "=== JSON" > "$PR_DATA_DIR/review.json" || true
+# Check if the agent created the review files
+echo "Checking for review results..."
 
-# Extract human-readable summary (everything after JSON END marker)
-sed -n '/=== JSON END ===/,$p' "$REVIEW_OUTPUT" | tail -n +2 > "$PR_DATA_DIR/summary.md" || true
+if [ ! -f "$PR_DATA_DIR/review.json" ]; then
+    echo "⚠️ Warning: Agent did not create review.json"
+    echo '{"summary": "Review failed - no output generated", "approval_status": "comment", "comments": []}' > "$PR_DATA_DIR/review.json"
+fi
+
+if [ ! -f "$PR_DATA_DIR/summary.md" ]; then
+    echo "⚠️ Warning: Agent did not create summary.md"
+    echo "Automated review encountered an error. Please check the logs." > "$PR_DATA_DIR/summary.md"
+fi
+
+# Validate the JSON
+if jq . "$PR_DATA_DIR/review.json" > /dev/null 2>&1; then
+    echo "✅ Valid JSON review found"
+    echo "Review summary: $(jq -r '.summary' "$PR_DATA_DIR/review.json")"
+else
+    echo "⚠️ Warning: Invalid JSON in review.json"
+    # Try to fix common issues
+    if jq . "$PR_DATA_DIR/review.json" 2>&1 | grep -q "Invalid numeric literal"; then
+        # Sometimes line numbers are strings instead of numbers
+        jq 'walk(if type == "object" and has("line") then .line = (.line | tonumber) else . end)' "$PR_DATA_DIR/review.json" > "$PR_DATA_DIR/review.json.tmp" && mv "$PR_DATA_DIR/review.json.tmp" "$PR_DATA_DIR/review.json"
+    fi
+fi
 
 # Extract cost information if available
 COST_LINE=$(grep -o "💰.*\$[0-9.]*" "$REVIEW_OUTPUT" | tail -1 || true)

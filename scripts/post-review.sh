@@ -12,7 +12,7 @@ if [ ! -f "$REVIEW_JSON" ]; then
     exit 1
 fi
 
-# Extract review components
+# Extract review components (analyze-diff.sh already validated the JSON)
 APPROVAL_STATUS=$(jq -r '.approval_status // "comment"' "$REVIEW_JSON")
 SUMMARY=$(jq -r '.summary // "Automated review completed"' "$REVIEW_JSON")
 GENERAL_FEEDBACK=$(jq -r '.general_feedback // ""' "$REVIEW_JSON")

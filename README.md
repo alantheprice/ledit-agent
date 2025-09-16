@@ -287,6 +287,8 @@ Additional options for `mode: 'review'`:
 
 **Note:** The reviewer only comments on problems that need to be fixed. It won't provide positive feedback or style suggestions unless they represent actual issues. This keeps reviews focused and actionable.
 
+**Technical Note:** The review agent writes its analysis directly to files (`review.json` and `summary.md`) for reliable parsing, avoiding issues with stdout parsing.
+
 ## Advanced Configuration
 
 ### Custom Trigger Commands
