@@ -164,6 +164,14 @@ if grep -q "API error.*403.*forbidden" "$OUTPUT_FILE"; then
     exit 1
 fi
 
+# Extract cost information if available
+COST_LINE=$(grep -o "💰.*\$[0-9.]*" "$OUTPUT_FILE" | tail -1 || true)
+if [ -n "$COST_LINE" ]; then
+    # Extract just the dollar amount
+    COST=$(echo "$COST_LINE" | grep -o "\$[0-9.]*" | tail -1)
+    echo "LEDIT_COST=$COST" >> $GITHUB_ENV
+fi
+
 # Clean up temp file
 rm -f "$OUTPUT_FILE"
 

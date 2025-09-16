@@ -45,7 +45,15 @@ $(git diff --name-status origin/main..."$BRANCH_NAME")
 
 ---
 **Automated by**: [ledit-agent](https://github.com/alantheprice/ledit-agent)
-**Model**: $AI_MODEL via $AI_PROVIDER
+**Model**: $AI_MODEL via $AI_PROVIDER"
+
+    # Add cost if available
+    if [ -n "$LEDIT_COST" ] && [ "$LEDIT_COST" != "$0.00" ] && [ "$LEDIT_COST" != "$0.000000" ]; then
+        PR_BODY="$PR_BODY
+**Cost**: $LEDIT_COST"
+    fi
+    
+    PR_BODY="$PR_BODY
 **Issue**: Closes #$ISSUE_NUMBER"
 
     # Create the PR (without assignee to avoid errors in GitHub Actions)
