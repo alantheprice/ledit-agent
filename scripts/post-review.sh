@@ -129,28 +129,90 @@ if [ "$SUMMARY_ONLY" != "true" ]; then
             } + if $sha != "" and $sha != "null" then {commit_id: $sha} else {} end')
         
         # Post the review
-        if ! gh api \
+        REVIEW_POSTED=false
+        REVIEW_ERROR=""
+        
+        if REVIEW_ERROR=$(gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" \
-            --input - <<< "$REVIEW_REQUEST" 2>&1; then
-            echo "Failed to post review with comments, trying without commit SHA..."
+            --input - <<< "$REVIEW_REQUEST" 2>&1); then
+            REVIEW_POSTED=true
+            echo "Review posted successfully with inline comments"
+        else
+            echo "Failed to post review: $REVIEW_ERROR"
             
-            # Retry without commit SHA
-            REVIEW_REQUEST=$(jq -n \
-                --arg body "$REVIEW_BODY" \
-                --arg event "$REVIEW_EVENT" \
-                --argjson comments "$FORMATTED_COMMENTS" \
-                '{body: $body, event: $event, comments: $comments}')
-            
-            if ! gh api \
-                --method POST \
-                -H "Accept: application/vnd.github+json" \
-                "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" \
-                --input - <<< "$REVIEW_REQUEST" 2>&1; then
-                echo "Failed to post review, falling back to simple comment"
-                gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY"
+            # Check if it's because we can't request changes on our own PR
+            if echo "$REVIEW_ERROR" | grep -q "Can not request changes on your own pull request"; then
+                echo "Cannot request changes on own PR, trying with COMMENT status..."
+                
+                # Change event to COMMENT
+                REVIEW_REQUEST=$(jq -n \
+                    --arg body "$REVIEW_BODY" \
+                    --arg event "COMMENT" \
+                    --arg sha "$HEAD_SHA" \
+                    --argjson comments "$FORMATTED_COMMENTS" \
+                    '{
+                        body: $body,
+                        event: $event,
+                        comments: $comments
+                    } + if $sha != "" and $sha != "null" then {commit_id: $sha} else {} end')
+                
+                if gh api \
+                    --method POST \
+                    -H "Accept: application/vnd.github+json" \
+                    "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" \
+                    --input - <<< "$REVIEW_REQUEST" 2>&1; then
+                    REVIEW_POSTED=true
+                    echo "Review posted as COMMENT with inline comments"
+                fi
             fi
+        fi
+        
+        # If review still failed, post comments individually
+        if [ "$REVIEW_POSTED" != "true" ]; then
+            echo "Failed to post review, falling back to individual comments"
+            
+            # First post the summary
+            gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY"
+            
+            # Then try to post inline comments using review comment API
+            echo "Posting inline comments..."
+            INLINE_FAILED=false
+            
+            # Get the latest commit SHA if we don't have it
+            if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" == "null" ] || [ "$HEAD_SHA" == "" ]; then
+                HEAD_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+            fi
+            
+            echo "$FORMATTED_COMMENTS" | jq -c '.[]' | while read -r comment; do
+                FILE=$(echo "$comment" | jq -r '.path')
+                LINE=$(echo "$comment" | jq -r '.line')
+                BODY=$(echo "$comment" | jq -r '.body')
+                SIDE=$(echo "$comment" | jq -r '.side // "RIGHT"')
+                
+                echo "Posting inline comment on $FILE:$LINE"
+                
+                # Try to post as a review comment (inline)
+                if ! gh api \
+                    --method POST \
+                    -H "Accept: application/vnd.github+json" \
+                    "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/comments" \
+                    -f body="$BODY" \
+                    -f commit_id="$HEAD_SHA" \
+                    -f path="$FILE" \
+                    -F line="$LINE" \
+                    -f side="$SIDE" 2>&1; then
+                    
+                    # If inline comment fails, post as regular comment
+                    COMMENT_BODY="📍 **\`$FILE:$LINE\`**
+
+$BODY"
+                    
+                    echo "Inline comment failed, posting as regular PR comment"
+                    gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY" || echo "Failed to post comment for $FILE:$LINE"
+                fi
+            done
         fi
     else
         # No inline comments, just post the review
