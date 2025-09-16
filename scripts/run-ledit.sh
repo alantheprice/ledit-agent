@@ -21,42 +21,6 @@ fi
 # Initialize workspace
 cd "$LEDIT_WORKSPACE"
 
-# Create .ledit directory if it doesn't exist
-mkdir -p .ledit
-
-# Copy API keys configuration if it exists
-if [ -f ~/.ledit/api_keys.json ]; then
-    cp ~/.ledit/api_keys.json .ledit/
-fi
-
-# Create agent config in .ledit directory
-cat > .ledit/config.json << EOF
-{
-  "last_used_provider": "$AI_PROVIDER",
-  "provider_models": {
-    "$AI_PROVIDER": "$AI_MODEL"
-  },
-  "provider_priority": ["$AI_PROVIDER", "openai", "openrouter", "deepinfra", "ollama", "cerebras", "groq", "deepseek"],
-  "preferences": {},
-  "version": "1.0"
-}
-EOF
-
-# Also create the main ledit config.json if needed
-cat > .ledit/ledit_config.json << EOF
-{
-  "editing_model": "$AI_PROVIDER:$AI_MODEL",
-  "summary_model": "$AI_PROVIDER:$AI_MODEL", 
-  "workspace_analysis_model": "$AI_PROVIDER:$AI_MODEL",
-  "orchestration_model": "$AI_PROVIDER:$AI_MODEL",
-  "code_review_model": "$AI_PROVIDER:$AI_MODEL",
-  "embedding_model": "$AI_PROVIDER:$AI_MODEL",
-  "autotrack": false,
-  "check_for_keys": false,
-  "provider": "$AI_PROVIDER"
-}
-EOF
-
 # Set the appropriate API key environment variable based on provider
 case "$AI_PROVIDER" in
     openai)
@@ -127,11 +91,11 @@ fi
 PROMPT+="
 Start by reading the issue context to understand what needs to be done."
 
-# Run ledit agent with timeout
+# Run ledit agent with timeout and provider/model flags
 echo "Starting ledit agent with ${LEDIT_TIMEOUT_MINUTES} minute timeout..."
 echo "Using model: $AI_MODEL with provider: $AI_PROVIDER"
 
-timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent "$PROMPT" || {
+timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT" || {
     EXIT_CODE=$?
     if [ $EXIT_CODE -eq 124 ]; then
         echo "⏱️ Ledit agent timed out after ${LEDIT_TIMEOUT_MINUTES} minutes"
