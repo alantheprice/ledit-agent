@@ -150,12 +150,13 @@ esac
 # Run ledit agent with timeout and provider/model flags
 echo "Starting ledit agent with ${LEDIT_TIMEOUT_MINUTES} minute timeout..."
 echo "Using model: $AI_MODEL with provider: $AI_PROVIDER"
+echo "Max iterations: ${MAX_ITERATIONS:-20}"
 
 # Create a temporary file to capture the output
 OUTPUT_FILE=$(mktemp)
 
 # Run ledit and capture output
-timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT" 2>&1 | tee "$OUTPUT_FILE"
+timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-20}" "$PROMPT" 2>&1 | tee "$OUTPUT_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
 # Check for specific error patterns in the output
