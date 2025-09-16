@@ -138,5 +138,10 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         LEDIT_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
         LEDIT_DEBUG: ${{ inputs.debug }}
+        AI_PROVIDER: ${{ inputs.ai-provider }}
+        AI_MODEL: ${{ inputs.ai-model }}
+        AI_API_KEY: ${{ inputs.ai-api-key }}
+        ENABLE_MCP: ${{ inputs.enable-mcp }}
+        MAX_ITERATIONS: ${{ inputs.max-iterations }}
       run: |
         ${{ github.action_path }}/scripts/main.sh

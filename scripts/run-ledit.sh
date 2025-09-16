@@ -3,6 +3,13 @@ set -e
 
 echo "Running ledit agent..."
 
+# Debug: Print environment variables
+if [ "$LEDIT_DEBUG" == "true" ]; then
+    echo "DEBUG: AI_PROVIDER=$AI_PROVIDER"
+    echo "DEBUG: AI_MODEL=$AI_MODEL"
+    echo "DEBUG: AI_API_KEY=${AI_API_KEY:0:10}..." # Print first 10 chars for security
+fi
+
 # Initialize workspace
 cd "$LEDIT_WORKSPACE"
 
