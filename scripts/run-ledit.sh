@@ -5,7 +5,61 @@ echo "Running ledit agent..."
 
 # Initialize workspace
 cd "$LEDIT_WORKSPACE"
-ledit init
+
+# Create .ledit directory if it doesn't exist
+mkdir -p .ledit
+
+# Copy API keys configuration if it exists
+if [ -f ~/.ledit/api_keys.json ]; then
+    cp ~/.ledit/api_keys.json .ledit/
+fi
+
+# Create config.json with the model configuration
+cat > .ledit/config.json << EOF
+{
+  "editing_model": "$AI_MODEL",
+  "summary_model": "$AI_MODEL", 
+  "workspace_analysis_model": "$AI_MODEL",
+  "orchestration_model": "$AI_MODEL",
+  "code_review_model": "$AI_MODEL",
+  "embedding_model": "$AI_MODEL",
+  "autotrack": false,
+  "check_for_keys": false,
+  "provider": "$AI_PROVIDER"
+}
+EOF
+
+# Set the appropriate API key environment variable based on provider
+case "$AI_PROVIDER" in
+    openai)
+        export OPENAI_API_KEY="$AI_API_KEY"
+        ;;
+    openrouter)
+        export OPENROUTER_API_KEY="$AI_API_KEY"
+        ;;
+    groq)
+        export GROQ_API_KEY="$AI_API_KEY"
+        ;;
+    deepinfra)
+        export DEEPINFRA_API_KEY="$AI_API_KEY"
+        ;;
+    cerebras)
+        export CEREBRAS_API_KEY="$AI_API_KEY"
+        ;;
+    deepseek)
+        export DEEPSEEK_API_KEY="$AI_API_KEY"
+        ;;
+    anthropic)
+        export ANTHROPIC_API_KEY="$AI_API_KEY"
+        ;;
+    ollama)
+        # Ollama doesn't need API key
+        ;;
+    *)
+        echo "ERROR: Unknown AI provider: $AI_PROVIDER"
+        exit 1
+        ;;
+esac
 
 # Build the prompt for ledit
 PROMPT="You are helping to solve GitHub issue #$ISSUE_NUMBER from the repository $GITHUB_REPOSITORY.

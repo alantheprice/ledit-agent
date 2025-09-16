@@ -29,6 +29,9 @@ case "$AI_PROVIDER" in
     deepseek)
         API_KEY_NAME="DEEPSEEK_API_KEY"
         ;;
+    anthropic)
+        API_KEY_NAME="ANTHROPIC_API_KEY"
+        ;;
     *)
         echo "ERROR: Unknown AI provider: $AI_PROVIDER"
         exit 1
@@ -43,7 +46,8 @@ cat > ~/.ledit/api_keys.json << EOF
   "groq_api_key": "$([[ "$AI_PROVIDER" == "groq" ]] && echo "$AI_API_KEY" || echo "")",
   "deepinfra_api_key": "$([[ "$AI_PROVIDER" == "deepinfra" ]] && echo "$AI_API_KEY" || echo "")",
   "cerebras_api_key": "$([[ "$AI_PROVIDER" == "cerebras" ]] && echo "$AI_API_KEY" || echo "")",
-  "deepseek_api_key": "$([[ "$AI_PROVIDER" == "deepseek" ]] && echo "$AI_API_KEY" || echo "")"
+  "deepseek_api_key": "$([[ "$AI_PROVIDER" == "deepseek" ]] && echo "$AI_API_KEY" || echo "")",
+  "anthropic_api_key": "$([[ "$AI_PROVIDER" == "anthropic" ]] && echo "$AI_API_KEY" || echo "")"
 }
 EOF
 
