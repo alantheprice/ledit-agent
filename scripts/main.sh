@@ -47,7 +47,12 @@ $LEDIT_ACTION_PATH/scripts/setup-branch.sh
 
 # Step 3: Run ledit agent
 echo "🧠 Running ledit agent..."
-$LEDIT_ACTION_PATH/scripts/run-ledit.sh
+if ! $LEDIT_ACTION_PATH/scripts/run-ledit.sh; then
+    echo "❌ Ledit agent failed to run successfully"
+    # Report failure to issue
+    $LEDIT_ACTION_PATH/scripts/report-status.sh "agent-failed"
+    exit 1
+fi
 
 # Check if ledit made any changes
 if [ -n "$(git status --porcelain)" ]; then

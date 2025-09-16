@@ -91,12 +91,84 @@ fi
 PROMPT+="
 Start by reading the issue context to understand what needs to be done."
 
+# Verify API key is set before running
+case "$AI_PROVIDER" in
+    openai)
+        if [ -z "$OPENAI_API_KEY" ]; then
+            echo "❌ ERROR: OPENAI_API_KEY is not set for provider 'openai'"
+            exit 1
+        fi
+        ;;
+    openrouter)
+        if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "❌ ERROR: OPENROUTER_API_KEY is not set for provider 'openrouter'"
+            exit 1
+        fi
+        ;;
+    groq)
+        if [ -z "$GROQ_API_KEY" ]; then
+            echo "❌ ERROR: GROQ_API_KEY is not set for provider 'groq'"
+            exit 1
+        fi
+        ;;
+    deepinfra)
+        if [ -z "$DEEPINFRA_API_KEY" ]; then
+            echo "❌ ERROR: DEEPINFRA_API_KEY is not set for provider 'deepinfra'"
+            exit 1
+        fi
+        ;;
+    cerebras)
+        if [ -z "$CEREBRAS_API_KEY" ]; then
+            echo "❌ ERROR: CEREBRAS_API_KEY is not set for provider 'cerebras'"
+            exit 1
+        fi
+        ;;
+    deepseek)
+        if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "❌ ERROR: DEEPSEEK_API_KEY is not set for provider 'deepseek'"
+            exit 1
+        fi
+        ;;
+    anthropic)
+        if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "❌ ERROR: ANTHROPIC_API_KEY is not set for provider 'anthropic'"
+            exit 1
+        fi
+        ;;
+    ollama)
+        # Ollama doesn't need API key
+        ;;
+esac
+
 # Run ledit agent with timeout and provider/model flags
 echo "Starting ledit agent with ${LEDIT_TIMEOUT_MINUTES} minute timeout..."
 echo "Using model: $AI_MODEL with provider: $AI_PROVIDER"
 
-timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT" || {
-    EXIT_CODE=$?
+# Create a temporary file to capture the output
+OUTPUT_FILE=$(mktemp)
+
+# Run ledit and capture output
+timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" "$PROMPT" 2>&1 | tee "$OUTPUT_FILE"
+EXIT_CODE=${PIPESTATUS[0]}
+
+# Check for specific error patterns in the output
+if grep -q "API error.*401.*not authorized" "$OUTPUT_FILE"; then
+    echo "❌ ERROR: Authentication failed - API key is invalid or missing"
+    rm -f "$OUTPUT_FILE"
+    exit 1
+fi
+
+if grep -q "API error.*403.*forbidden" "$OUTPUT_FILE"; then
+    echo "❌ ERROR: Access forbidden - API key may not have required permissions"
+    rm -f "$OUTPUT_FILE"
+    exit 1
+fi
+
+# Clean up temp file
+rm -f "$OUTPUT_FILE"
+
+# Handle exit codes
+if [ $EXIT_CODE -ne 0 ]; then
     if [ $EXIT_CODE -eq 124 ]; then
         echo "⏱️ Ledit agent timed out after ${LEDIT_TIMEOUT_MINUTES} minutes"
         exit 1

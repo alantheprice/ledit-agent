@@ -15,6 +15,22 @@ I analyzed the issue but didn't find any changes that needed to be made. This co
 
 Please provide additional context if needed."
 
+elif [ "$STATUS" == "agent-failed" ]; then
+    MESSAGE="❌ **Agent failed to run**
+
+The AI agent encountered an error and couldn't process your request. This is often due to:
+- Missing or invalid API key for the configured AI provider
+- API rate limits or service outages
+- Authentication/permission issues
+
+**Error Details:**
+Check the GitHub Actions run logs for more information: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+**Next Steps:**
+1. Verify the AI provider API key is correctly configured
+2. Check if the AI service is operational
+3. Review the error logs for specific error messages"
+
 else
     MESSAGE="❌ **Failed to process issue**
 
