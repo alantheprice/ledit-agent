@@ -56,7 +56,7 @@ $(git diff --name-status origin/main..."$BRANCH_NAME")
 4. Approve and merge when satisfied
 
 ---
-**Automated by**: ledit v$(ledit --version 2>/dev/null || echo "latest")
+**Automated by**: [ledit-agent](https://github.com/alantheprice/ledit-agent)
 **Model**: $AI_MODEL via $AI_PROVIDER
 **Issue**: Closes #$ISSUE_NUMBER"
 
