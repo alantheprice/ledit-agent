@@ -1,8 +1,8 @@
-# Ledit Agent - AI-Powered GitHub Issue Solver
+# Ledit Agent - AI-Powered GitHub Automation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Automatically solve GitHub issues using AI-powered code generation with [ledit](https://github.com/alantheprice/ledit).
+Automatically solve GitHub issues and review pull requests using AI-powered code analysis with [ledit](https://github.com/alantheprice/ledit).
 
 ## Features
 
@@ -148,6 +148,21 @@ ai-api-key: ${{ secrets.OPENROUTER_API_KEY }}
 **Later**: /ledit add rate limiting
 ```
 
+### PR Review Examples
+
+#### Automatic Review on PR
+When you open or update a PR, the bot automatically reviews it if you have the workflow configured.
+
+#### Manual Review Request
+```markdown
+**PR Comment**: /review
+```
+
+#### Focused Review
+```markdown
+**PR Comment**: /review focus on security
+```
+
 ## PR Review Setup
 
 Add this workflow to enable automated PR reviews:
@@ -226,19 +241,27 @@ If you prefer not to enable PR creation for GitHub Actions, you can use a Person
 ```yaml
 - uses: alantheprice/ledit-agent@v1
   with:
+    # Mode
+    mode: 'solve'                    # 'solve' for issues, 'review' for PRs
+    
     # Required
     ai-provider: 'openai'
     ai-model: 'gpt-5-mini'
     github-token: ${{ secrets.GITHUB_TOKEN }}
     ai-api-key: ${{ secrets.OPENAI_API_KEY }}
     
-    # Optional
+    # Optional - General
     timeout-minutes: 20              # Max runtime (default: 10)
     max-iterations: 30              # Max agent iterations (default: 20)
     ledit-version: 'latest'         # Specific ledit version
     enable-mcp: 'true'              # Enable GitHub MCP tools
     debug: 'false'                  # Enable debug logging
     workspace-dir: '.'              # Working directory
+    
+    # Optional - Review Mode
+    review-type: 'comprehensive'     # Focus: comprehensive, security, performance, style
+    comment-threshold: 'medium'      # Comment level: low, medium, high
+    summary-only: 'false'           # Only post summary, no inline comments
 ```
 
 ### Custom Trigger Commands
