@@ -38,12 +38,12 @@ esac
 # Create API keys file
 cat > ~/.ledit/api_keys.json << EOF
 {
-  "openai_api_key": "${AI_PROVIDER == 'openai' && echo $AI_API_KEY || echo ''}",
-  "openrouter_api_key": "${AI_PROVIDER == 'openrouter' && echo $AI_API_KEY || echo ''}",
-  "groq_api_key": "${AI_PROVIDER == 'groq' && echo $AI_API_KEY || echo ''}",
-  "deepinfra_api_key": "${AI_PROVIDER == 'deepinfra' && echo $AI_API_KEY || echo ''}",
-  "cerebras_api_key": "${AI_PROVIDER == 'cerebras' && echo $AI_API_KEY || echo ''}",
-  "deepseek_api_key": "${AI_PROVIDER == 'deepseek' && echo $AI_API_KEY || echo ''}"
+  "openai_api_key": "$([[ "$AI_PROVIDER" == "openai" ]] && echo "$AI_API_KEY" || echo "")",
+  "openrouter_api_key": "$([[ "$AI_PROVIDER" == "openrouter" ]] && echo "$AI_API_KEY" || echo "")",
+  "groq_api_key": "$([[ "$AI_PROVIDER" == "groq" ]] && echo "$AI_API_KEY" || echo "")",
+  "deepinfra_api_key": "$([[ "$AI_PROVIDER" == "deepinfra" ]] && echo "$AI_API_KEY" || echo "")",
+  "cerebras_api_key": "$([[ "$AI_PROVIDER" == "cerebras" ]] && echo "$AI_API_KEY" || echo "")",
+  "deepseek_api_key": "$([[ "$AI_PROVIDER" == "deepseek" ]] && echo "$AI_API_KEY" || echo "")"
 }
 EOF
 
