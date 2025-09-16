@@ -3,8 +3,8 @@ set -e
 
 echo "Fetching PR #$PR_NUMBER from $GITHUB_REPOSITORY..."
 
-# Fetch PR metadata
-gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,files,additions,deletions > "$PR_DATA_DIR/metadata.json"
+# Fetch PR metadata including head SHA
+gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions > "$PR_DATA_DIR/metadata.json"
 
 # Extract key information
 PR_TITLE=$(jq -r '.title' "$PR_DATA_DIR/metadata.json")

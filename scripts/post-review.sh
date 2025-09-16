@@ -77,29 +77,44 @@ fi
 if [ "$SUMMARY_ONLY" != "true" ]; then
     # Extract comments array
     COMMENTS_FILE=$(mktemp)
-    jq -r '.comments // []' "$REVIEW_JSON" > "$COMMENTS_FILE"
+    jq -c '.comments // []' "$REVIEW_JSON" > "$COMMENTS_FILE"
     
-    # Count comments
-    COMMENT_COUNT=$(jq '. | length' "$COMMENTS_FILE")
+    # Validate and clean comments
+    CLEANED_COMMENTS=$(mktemp)
+    jq -c '.[] | select(.file != null and .line != null and (.line | type) == "number")' "$COMMENTS_FILE" > "$CLEANED_COMMENTS" 2>/dev/null || true
+    mv "$CLEANED_COMMENTS" "$COMMENTS_FILE"
+    
+    # Count valid comments
+    COMMENT_COUNT=$(jq -s '. | length' "$COMMENTS_FILE" 2>/dev/null || echo "0")
     
     if [ "$COMMENT_COUNT" -gt 0 ]; then
         echo "Found $COMMENT_COUNT inline comments to post"
         
         # Create a review with comments
+        # Get the head commit SHA
+        HEAD_SHA=$(jq -r '.headRefOid // ""' "$PR_DATA_DIR/metadata.json")
+        
         # First, create a pending review
-        REVIEW_ID=$(gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" \
-            -f body="$REVIEW_BODY" \
-            -f event="PENDING" \
-            --jq '.id')
+        REVIEW_CREATE_ARGS=(
+            --method POST
+            -H "Accept: application/vnd.github+json"
+            "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews"
+            -f body="$REVIEW_BODY"
+            -f event="PENDING"
+        )
+        
+        # Add commit SHA if available
+        if [ -n "$HEAD_SHA" ] && [ "$HEAD_SHA" != "null" ]; then
+            REVIEW_CREATE_ARGS+=(-f commit_id="$HEAD_SHA")
+        fi
+        
+        REVIEW_ID=$(gh api "${REVIEW_CREATE_ARGS[@]}" --jq '.id' 2>/dev/null || echo "")
         
         if [ -n "$REVIEW_ID" ] && [ "$REVIEW_ID" != "null" ]; then
             echo "Created pending review: $REVIEW_ID"
             
             # Add each comment to the review
-            jq -c '.[]' "$COMMENTS_FILE" | while read -r comment; do
+            cat "$COMMENTS_FILE" | while read -r comment; do
                 FILE=$(echo "$comment" | jq -r '.file')
                 LINE=$(echo "$comment" | jq -r '.line')
                 SIDE=$(echo "$comment" | jq -r '.side // "RIGHT"')
@@ -149,16 +164,30 @@ if [ "$SUMMARY_ONLY" != "true" ]; then
                         ;;
                 esac
                 
+                # Validate required fields
+                if [ -z "$FILE" ] || [ -z "$LINE" ] || [ "$LINE" == "null" ] || [ "$FILE" == "null" ]; then
+                    echo "Skipping comment with invalid file/line: $FILE:$LINE"
+                    continue
+                fi
+                
+                # Ensure line is a number
+                if ! [[ "$LINE" =~ ^[0-9]+$ ]]; then
+                    echo "Skipping comment with non-numeric line: $LINE"
+                    continue
+                fi
+                
                 # Post the comment
-                echo "Adding comment on $FILE:$LINE"
-                gh api \
+                echo "Adding comment on $FILE:$LINE (severity: $SEVERITY)"
+                if ! gh api \
                     --method POST \
                     -H "Accept: application/vnd.github+json" \
                     "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews/$REVIEW_ID/comments" \
                     -f body="$BODY" \
                     -f path="$FILE" \
                     -F line="$LINE" \
-                    -f side="$SIDE" > /dev/null || echo "Failed to add comment on $FILE:$LINE"
+                    -f side="$SIDE" 2>&1; then
+                    echo "Failed to add comment on $FILE:$LINE - continuing with other comments"
+                fi
             done
             
             # Submit the review
