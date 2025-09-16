@@ -7,6 +7,12 @@ branding:
   color: 'blue'
 
 inputs:
+  # Mode Selection
+  mode:
+    description: 'Operation mode: solve (default) or review'
+    required: false
+    default: 'solve'
+  
   github-token:
     description: 'GitHub token for API access'
     required: true
@@ -23,6 +29,22 @@ inputs:
   ai-api-key:
     description: 'API key for the selected AI provider'
     required: true
+  
+  # Review Mode Configuration
+  review-type:
+    description: 'Type of review: comprehensive, security, performance, style'
+    required: false
+    default: 'comprehensive'
+  
+  comment-threshold:
+    description: 'When to post inline comments: low, medium, high'
+    required: false
+    default: 'medium'
+  
+  summary-only:
+    description: 'Only post summary without inline comments'
+    required: false
+    default: 'false'
   
   # Ledit Configuration
   ledit-version:
@@ -131,7 +153,7 @@ runs:
       run: |
         ${{ github.action_path }}/scripts/configure-mcp.sh
     
-    - name: Run main workflow
+    - name: Run workflow based on mode
       id: main
       shell: bash
       env:
@@ -143,5 +165,12 @@ runs:
         AI_API_KEY: ${{ inputs.ai-api-key }}
         ENABLE_MCP: ${{ inputs.enable-mcp }}
         MAX_ITERATIONS: ${{ inputs.max-iterations }}
+        REVIEW_TYPE: ${{ inputs.review-type }}
+        COMMENT_THRESHOLD: ${{ inputs.comment-threshold }}
+        SUMMARY_ONLY: ${{ inputs.summary-only }}
       run: |
-        ${{ github.action_path }}/scripts/main.sh
+        if [ "${{ inputs.mode }}" == "review" ]; then
+          ${{ github.action_path }}/scripts/review-pr.sh
+        else
+          ${{ github.action_path }}/scripts/main.sh
+        fi

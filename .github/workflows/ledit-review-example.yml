@@ -1,0 +1,39 @@
+name: Ledit PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review-pr:
+    # Only run on PRs (not drafts) or when someone comments /review
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review') && github.event.issue.pull_request)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history to analyze changes properly
+          fetch-depth: 0
+          
+      - uses: alantheprice/ledit-agent@v1
+        with:
+          mode: 'review'
+          ai-provider: 'deepinfra'
+          ai-model: 'deepseek-ai/DeepSeek-V3.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          
+          # Optional review-specific settings
+          review-type: 'comprehensive'     # comprehensive, security, performance, style
+          comment-threshold: 'medium'       # low, medium, high - when to post inline comments
+          summary-only: 'false'            # If true, only posts summary, no inline comments

@@ -6,12 +6,22 @@ Automatically solve GitHub issues using AI-powered code generation with [ledit](
 
 ## Features
 
+### Issue Solving
 - 🤖 **AI-Powered Implementation** - Analyzes issues and generates complete solutions
 - 🖼️ **Vision Support** - Processes mockups and screenshots to implement UIs
 - 🔄 **Iterative Development** - Refine implementations with follow-up commands
 - 🌿 **Smart Git Management** - Creates branches and pull requests automatically
+
+### Code Review
+- 🔍 **Comprehensive PR Analysis** - Thorough review of code changes
+- 💬 **Inline Comments** - Specific feedback on exact lines of code
+- 🎯 **Configurable Focus** - Security, performance, style, or comprehensive
+- 📊 **Severity Levels** - Critical, major, minor, and suggestions
+
+### General
 - 🔧 **Multi-Provider Support** - Works with OpenAI, Groq, Gemini, DeepInfra, and more
 - 🛡️ **Secure by Design** - All changes go through PR review process
+- 💰 **Cost Tracking** - See AI costs for each operation
 
 ## Quick Start
 
@@ -138,6 +148,62 @@ ai-api-key: ${{ secrets.OPENROUTER_API_KEY }}
 **Later**: /ledit add rate limiting
 ```
 
+## PR Review Setup
+
+Add this workflow to enable automated PR reviews:
+
+```yaml
+# .github/workflows/pr-review.yml
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: |
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review'))
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - uses: alantheprice/ledit-agent@v1
+        with:
+          mode: 'review'
+          ai-provider: 'deepinfra'
+          ai-model: 'deepseek-ai/DeepSeek-V3.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          review-type: 'comprehensive'
+          comment-threshold: 'medium'
+```
+
+### Review Options
+
+- **review-type**: Focus of the review
+  - `comprehensive` - All aspects (default)
+  - `security` - Security vulnerabilities
+  - `performance` - Performance issues
+  - `style` - Code style and conventions
+
+- **comment-threshold**: When to post inline comments
+  - `low` - All issues including style
+  - `medium` - Significant issues only (default)
+  - `high` - Only critical issues
+
+- **summary-only**: Set to `true` for summary without inline comments
+
 ## Alternative: Using Personal Access Token (PAT)
 
 If you prefer not to enable PR creation for GitHub Actions, you can use a Personal Access Token:
@@ -200,12 +266,23 @@ on:
 
 ## How It Works
 
+### Issue Solver Mode (Default)
 1. **Trigger** - User comments `/ledit` on an issue
 2. **Analysis** - Agent reads issue, comments, and attached images
 3. **Planning** - Breaks down the task into implementation steps
 4. **Implementation** - Generates code following your project's patterns
 5. **Review** - Creates PR with detailed description of changes
 6. **Iteration** - Supports refinement through additional commands
+
+### PR Review Mode
+1. **Trigger** - PR is opened/updated or user comments `/review`
+2. **Analysis** - Agent analyzes the diff and changes
+3. **Review** - Provides comprehensive feedback on:
+   - Code quality and best practices
+   - Potential bugs and edge cases
+   - Security vulnerabilities
+   - Performance implications
+4. **Comments** - Posts inline comments and overall assessment
 
 ## Best Practices
 
