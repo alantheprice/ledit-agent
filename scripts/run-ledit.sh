@@ -76,7 +76,7 @@ Your task:
 
 If there are existing PRs with feedback, make sure to address the review comments.
 
-CRITICAL: If you see "Inline Code Review Comments" in the context, these are specific file/line issues that MUST be fixed. Address each one by:
+CRITICAL: If you see 'Inline Code Review Comments' in the context, these are specific file/line issues that MUST be fixed. Address each one by:
 1. Navigating to the specified file and line
 2. Understanding the issue raised
 3. Implementing the requested fix

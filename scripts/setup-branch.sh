@@ -6,6 +6,7 @@ echo "Setting up branch: $BRANCH_NAME"
 # Configure git
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
+git config pull.rebase false
 
 # Handle shallow clones
 if [ -f .git/shallow ]; then
