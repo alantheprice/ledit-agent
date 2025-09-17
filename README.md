@@ -255,7 +255,7 @@ Additional options for `mode: 'solve'` (default):
     # ... common options ...
     
     # Solve-specific options
-    max-iterations: 30              # Max agent iterations (default: 20)
+    max-iterations: 30              # Max agent iterations (default: 180 for solve, 80 for review)
     enable-mcp: 'true'              # Enable GitHub MCP tools
     workspace-dir: '.'              # Working directory
 ```

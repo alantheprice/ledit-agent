@@ -122,9 +122,15 @@ EOF
             REVIEW_COMMENTS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUM/comments" --paginate 2>/dev/null || echo "[]")
             
             if [ "$REVIEW_COMMENTS" != "[]" ] && [ "$(echo "$REVIEW_COMMENTS" | jq 'length')" -gt 0 ]; then
-                echo "#### Code Review Comments" >> "$ISSUE_DATA_DIR/context.md"
+                echo "#### 🔍 Inline Code Review Comments (IMPORTANT - These need to be addressed!)" >> "$ISSUE_DATA_DIR/context.md"
                 echo "" >> "$ISSUE_DATA_DIR/context.md"
-                echo "$REVIEW_COMMENTS" | jq -r '.[] | "**@\(.user.login)** on `\(.path):\(.line)`:\n\(.body)\n"' >> "$ISSUE_DATA_DIR/context.md" 2>/dev/null || true
+                echo "The following specific code issues were identified and MUST be fixed:" >> "$ISSUE_DATA_DIR/context.md"
+                echo "" >> "$ISSUE_DATA_DIR/context.md"
+                
+                echo "$REVIEW_COMMENTS" | jq -r '.[] | 
+                    "📍 **File: `\(.path)` Line: `\(.line)`**\n" +
+                    "   Reviewer: @\(.user.login)\n" +
+                    "   Comment: \(.body)\n"' >> "$ISSUE_DATA_DIR/context.md" 2>/dev/null || true
             fi
         fi
     done
@@ -233,6 +239,22 @@ if [ "$PR_COUNT" -gt 0 ]; then
     PR_NUMBERS=$(echo "$ALL_PRS" | jq -r '.[].number' | tr '\n' ',' | sed 's/,$//')
     echo "ASSOCIATED_PR_NUMBERS=$PR_NUMBERS" >> $GITHUB_ENV
     echo "Associated PRs: $PR_NUMBERS"
+fi
+
+# Add a summary of action items if there are inline comments
+if [ -n "$UNIQUE_ISSUES" ]; then
+    TOTAL_INLINE_COMMENTS=0
+    for ISSUE_NUM in $UNIQUE_ISSUES; do
+        COMMENT_COUNT=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/pulls/$ISSUE_NUM/comments" --paginate 2>/dev/null | jq 'length' || echo "0")
+        TOTAL_INLINE_COMMENTS=$((TOTAL_INLINE_COMMENTS + COMMENT_COUNT))
+    done
+    
+    if [ "$TOTAL_INLINE_COMMENTS" -gt 0 ]; then
+        echo "" >> "$ISSUE_DATA_DIR/context.md"
+        echo "## ⚡ Action Summary" >> "$ISSUE_DATA_DIR/context.md"
+        echo "**IMPORTANT**: This issue has $TOTAL_INLINE_COMMENTS inline code review comment(s) that must be addressed!" >> "$ISSUE_DATA_DIR/context.md"
+        echo "Look for the '🔍 Inline Code Review Comments' section above for specific file/line issues." >> "$ISSUE_DATA_DIR/context.md"
+    fi
 fi
 
 echo "Issue data prepared at: $ISSUE_DATA_DIR"

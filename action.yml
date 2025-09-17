@@ -71,7 +71,7 @@ inputs:
   max-iterations:
     description: 'Maximum iterations for the ledit agent'
     required: false
-    default: '20'
+    default: '180'
   
   debug:
     description: 'Enable debug logging'

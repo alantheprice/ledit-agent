@@ -160,7 +160,7 @@ echo "Working directory: $(pwd)"
 cd "$GITHUB_WORKSPACE" || cd "$(git rev-parse --show-toplevel)" || true
 
 # Try a different approach - use the file directly
-if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-20}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
+if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-80}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
     EXIT_CODE=$?
     echo "❌ Ledit command failed with exit code: $EXIT_CODE"
     echo "Review output:"
