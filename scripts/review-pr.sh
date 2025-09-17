@@ -38,6 +38,20 @@ export PR_DATA_DIR="/tmp/ledit-pr-$PR_NUMBER"
 # Create data directory
 mkdir -p "$PR_DATA_DIR"
 
+# Check if we're on the correct branch for PR review
+if [ -n "$GITHUB_HEAD_REF" ]; then
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$CURRENT_BRANCH" != "$GITHUB_HEAD_REF" ]; then
+        echo "⚠️  WARNING: You're on branch '$CURRENT_BRANCH' but the PR is from branch '$GITHUB_HEAD_REF'"
+        echo "⚠️  The reviewer may report files as missing if they only exist in the PR branch."
+        echo "⚠️  To fix this, update your workflow's checkout step to:"
+        echo "⚠️    - uses: actions/checkout@v4"
+        echo "⚠️      with:"
+        echo "⚠️        ref: \${{ github.event.pull_request.head.ref }}"
+        echo ""
+    fi
+fi
+
 # Step 1: Fetch PR details and diff
 echo "📋 Fetching PR details..."
 $LEDIT_ACTION_PATH/scripts/fetch-pr.sh

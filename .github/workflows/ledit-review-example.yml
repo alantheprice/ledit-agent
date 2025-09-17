@@ -22,6 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # For PR reviews, ensure we check out the PR branch
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           # Fetch full history to analyze changes properly
           fetch-depth: 0
           

@@ -27,6 +27,14 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 
 ## Quick Start
 
+> **⚠️ IMPORTANT for PR Reviews**: Always check out the PR branch, not the base branch:
+> ```yaml
+> - uses: actions/checkout@v4
+>   with:
+>     ref: ${{ github.event.pull_request.head.ref }}
+> ```
+> Without this, the reviewer will incorrectly report that new files don't exist.
+
 ### For Issue Solving
 
 Create `.github/workflows/ledit-solve.yml` in your repository:
@@ -89,6 +97,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # IMPORTANT: Check out the PR branch, not the base branch
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
           
       - uses: alantheprice/ledit-agent@v1
@@ -391,6 +401,12 @@ If the action installs an older version (e.g., v0.5.9) when 'latest' is specifie
 - Specify the exact version: `ledit-version: 'v0.5.10'`
 - This can happen due to Go module proxy caching
 - Minimum v0.5.10 is required for max-iterations support
+
+### PR Review Claims Files Don't Exist
+If the reviewer says files added in the PR don't exist:
+- Ensure your checkout step includes: `ref: ${{ github.event.pull_request.head.ref }}`
+- The reviewer needs to analyze the PR branch, not the base branch
+- See the PR Review example for correct checkout configuration
 
 ## Contributing
 

@@ -88,11 +88,21 @@ fi
 echo "pr-number=$PR_NUMBER" >> $GITHUB_OUTPUT
 echo "pr-url=$PR_URL" >> $GITHUB_OUTPUT
 
-# Add comment to issue
-gh issue comment "$ISSUE_NUMBER" --body "🎉 I've created pull request #$PR_NUMBER to address this issue.
+# Add comment to issue about PR status
+if [ -n "$EXISTING_PR" ]; then
+    # PR was updated, not created
+    gh issue comment "$ISSUE_NUMBER" --body "🔄 I've updated pull request #$PR_NUMBER with new changes.
+
+🔗 **Pull Request**: $PR_URL
+
+Please review the latest changes and let me know if any adjustments are needed."
+else
+    # New PR was created
+    gh issue comment "$ISSUE_NUMBER" --body "🎉 I've created pull request #$PR_NUMBER to address this issue.
 
 🔗 **Pull Request**: $PR_URL
 
 Please review the proposed changes and let me know if any adjustments are needed."
+fi
 
 echo "Pull request ready: $PR_URL"

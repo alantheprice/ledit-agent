@@ -159,6 +159,28 @@ echo "Working directory: $(pwd)"
 # Ensure we're in the repository root for code exploration
 cd "$GITHUB_WORKSPACE" || cd "$(git rev-parse --show-toplevel)" || true
 
+# Check if files from the PR diff actually exist (indicates correct branch)
+if [ -f "$PR_DATA_DIR/full.diff" ]; then
+    # Extract first few added files from the diff
+    ADDED_FILES=$(grep -E "^\+\+\+ b/" "$PR_DATA_DIR/full.diff" | head -3 | sed 's/^+++ b\///' | grep -v "^/dev/null")
+    
+    if [ -n "$ADDED_FILES" ]; then
+        MISSING_COUNT=0
+        for file in $ADDED_FILES; do
+            if [ ! -f "$file" ]; then
+                ((MISSING_COUNT++))
+            fi
+        done
+        
+        if [ "$MISSING_COUNT" -gt 0 ]; then
+            echo "⚠️  WARNING: Some files being added in this PR don't exist in the current checkout."
+            echo "⚠️  This usually means the base branch was checked out instead of the PR branch."
+            echo "⚠️  The review may incorrectly report files as missing."
+            echo ""
+        fi
+    fi
+fi
+
 # Try a different approach - use the file directly
 if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-80}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
     EXIT_CODE=$?
