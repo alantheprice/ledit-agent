@@ -137,6 +137,30 @@ echo "Prompt written to: $PROMPT_FILE"
 echo "Prompt length: $(wc -c < "$PROMPT_FILE") characters"
 echo "First 100 chars of prompt: $(head -c 100 "$PROMPT_FILE")"
 
+# Debug: Check if context files exist
+echo "Checking context files..."
+if [ -f "$PR_DATA_DIR/context.md" ]; then
+    echo "✅ Context file exists: $PR_DATA_DIR/context.md"
+    echo "Context file size: $(wc -c < "$PR_DATA_DIR/context.md") bytes"
+else
+    echo "❌ Context file missing: $PR_DATA_DIR/context.md"
+fi
+
+if [ -f "$PR_DATA_DIR/full.diff" ]; then
+    echo "✅ Diff file exists: $PR_DATA_DIR/full.diff"
+    echo "Diff file size: $(wc -c < "$PR_DATA_DIR/full.diff") bytes"
+else
+    echo "❌ Diff file missing: $PR_DATA_DIR/full.diff"
+fi
+
+# Debug: Check environment variables
+echo "Debug environment:"
+echo "AI_PROVIDER=$AI_PROVIDER"
+echo "AI_MODEL=$AI_MODEL"
+echo "LEDIT_TIMEOUT_MINUTES=${LEDIT_TIMEOUT_MINUTES:-10}"
+echo "MAX_ITERATIONS=${MAX_ITERATIONS:-80}"
+echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
 

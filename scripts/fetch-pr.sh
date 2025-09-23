@@ -3,15 +3,31 @@ set -e
 
 echo "Fetching PR #$PR_NUMBER from $GITHUB_REPOSITORY..."
 
-# Fetch PR metadata including head SHA
-gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions > "$PR_DATA_DIR/metadata.json"
+# Debug: Check if PR exists
+if ! gh pr view "$PR_NUMBER" > /dev/null 2>&1; then
+    echo "❌ ERROR: PR #$PR_NUMBER not found or inaccessible"
+    exit 1
+fi
 
-# Extract key information
-PR_TITLE=$(jq -r '.title' "$PR_DATA_DIR/metadata.json")
+# Fetch PR metadata including head SHA
+echo "Fetching PR metadata..."
+if ! gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions > "$PR_DATA_DIR/metadata.json"; then
+    echo "❌ ERROR: Failed to fetch PR metadata"
+    exit 1
+fi
+
+# Validate JSON file was created
+if [ ! -f "$PR_DATA_DIR/metadata.json" ] || [ ! -s "$PR_DATA_DIR/metadata.json" ]; then
+    echo "❌ ERROR: PR metadata file is empty or missing"
+    exit 1
+fi
+
+# Extract key information with error handling
+PR_TITLE=$(jq -r '.title // "Unknown Title"' "$PR_DATA_DIR/metadata.json")
 PR_BODY=$(jq -r '.body // ""' "$PR_DATA_DIR/metadata.json")
-PR_AUTHOR=$(jq -r '.author.login' "$PR_DATA_DIR/metadata.json")
-BASE_BRANCH=$(jq -r '.baseRefName' "$PR_DATA_DIR/metadata.json")
-HEAD_BRANCH=$(jq -r '.headRefName' "$PR_DATA_DIR/metadata.json")
+PR_AUTHOR=$(jq -r '.author.login // "Unknown Author"' "$PR_DATA_DIR/metadata.json")
+BASE_BRANCH=$(jq -r '.baseRefName // "Unknown"' "$PR_DATA_DIR/metadata.json")
+HEAD_BRANCH=$(jq -r '.headRefName // "Unknown"' "$PR_DATA_DIR/metadata.json")
 
 echo "PR: $PR_TITLE"
 echo "Author: $PR_AUTHOR"
@@ -19,10 +35,17 @@ echo "Base: $BASE_BRANCH <- Head: $HEAD_BRANCH"
 
 # Fetch the full diff
 echo "Fetching diff..."
-gh pr diff "$PR_NUMBER" > "$PR_DATA_DIR/full.diff"
+if ! gh pr diff "$PR_NUMBER" > "$PR_DATA_DIR/full.diff"; then
+    echo "⚠️  WARNING: Failed to fetch PR diff, creating empty diff file"
+    echo "# Unable to fetch diff for PR #$PR_NUMBER" > "$PR_DATA_DIR/full.diff"
+fi
 
 # Fetch file list with changes stats
-gh pr view "$PR_NUMBER" --json files --jq '.files[] | "\(.path) +\(.additions) -\(.deletions)"' > "$PR_DATA_DIR/files.txt"
+echo "Fetching file list..."
+if ! gh pr view "$PR_NUMBER" --json files --jq '.files[] | "\(.path) +\(.additions) -\(.deletions)"' > "$PR_DATA_DIR/files.txt" 2>/dev/null; then
+    echo "⚠️  WARNING: Failed to fetch file list"
+    echo "# Unable to fetch file list" > "$PR_DATA_DIR/files.txt"
+fi
 
 # Detect if this is a documentation-only PR
 DOC_ONLY="true"
