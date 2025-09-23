@@ -202,11 +202,11 @@ if ! command -v ledit &> /dev/null; then
 fi
 
 # Debug: Test basic ledit functionality
-echo "Testing ledit command..."
-if ! ledit --version 2>&1; then
-    echo "❌ ERROR: ledit --version failed"
-    exit 1
-fi
+# echo "Testing ledit command..."
+# if ! ledit --version 2>&1; then
+#     echo "❌ ERROR: ledit --version failed"
+#     exit 1
+# fi
 
 # Debug: Show final command that will be executed
 echo "=== FINAL COMMAND DEBUG ==="
