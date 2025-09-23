@@ -30,12 +30,37 @@ fi
 # Verify installation
 if ! command -v ledit &> /dev/null; then
     echo "ERROR: ledit installation failed"
+    echo "PATH: $PATH"
+    echo "Go binary location: $(which go)"
+    echo "Go version: $(go version)"
+    echo "Go modules cache: $(go env GOMODCACHE)"
     exit 1
 fi
 
-INSTALLED_VERSION=$(ledit --version 2>/dev/null || echo "unknown")
+# Test ledit command with error capture
+INSTALLED_VERSION="unknown"
+if LEDIT_OUTPUT=$(ledit --version 2>&1); then
+    INSTALLED_VERSION="$LEDIT_OUTPUT"
+else
+    echo "WARNING: ledit --version failed with output: $LEDIT_OUTPUT"
+    echo "Attempting to run ledit with --help to diagnose..."
+    if LEDIT_HELP=$(ledit --help 2>&1); then
+        echo "ledit --help succeeded"
+    else
+        echo "ledit --help failed: $LEDIT_HELP"
+    fi
+fi
+
 echo "Ledit installed successfully: $INSTALLED_VERSION"
 echo "Installation path: $(which ledit)"
+
+# Check if the binary is executable
+if [ -x "$(which ledit)" ]; then
+    echo "✅ Ledit binary is executable"
+else
+    echo "❌ Ledit binary is not executable"
+    chmod +x "$(which ledit)" 2>/dev/null || echo "Failed to make ledit executable"
+fi
 
 # Check minimum version requirement (v0.5.10 for max-iterations support)
 REQUIRED_VERSION="v0.5.10"

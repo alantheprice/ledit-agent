@@ -193,15 +193,41 @@ if [ -f "$PR_DATA_DIR/full.diff" ]; then
     fi
 fi
 
-# Try a different approach - use the file directly
-if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-80}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
+# Debug: Check if ledit command works
+if ! command -v ledit &> /dev/null; then
+    echo "❌ ERROR: ledit command not found in PATH"
+    echo "PATH: $PATH"
+    echo "which ledit: $(which ledit)"
+    exit 1
+fi
+
+# Debug: Test basic ledit functionality
+echo "Testing ledit command..."
+if ! ledit --version 2>&1; then
+    echo "❌ ERROR: ledit --version failed"
+    exit 1
+fi
+
+# Debug: Show final command that will be executed
+echo "=== FINAL COMMAND DEBUG ==="
+echo "Command: timeout ${LEDIT_TIMEOUT_MINUTES:-10}m ledit agent --provider $AI_PROVIDER --model $AI_MODEL --max-iterations ${MAX_ITERATIONS:-180} \"\$(cat $PROMPT_FILE)\""
+echo "Prompt file: $PROMPT_FILE"
+echo "Prompt length: $(wc -c < "$PROMPT_FILE") characters"
+echo "Prompt preview: $(head -c 200 "$PROMPT_FILE")..."
+echo "============================"
+
+echo "Running ledit agent with timeout..."
+set -x  # Enable command tracing
+if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
     EXIT_CODE=$?
     echo "❌ Ledit command failed with exit code: $EXIT_CODE"
-    echo "Review output:"
+    echo "=== FULL COMMAND OUTPUT ==="
     cat "$REVIEW_OUTPUT"
+    echo "=== END COMMAND OUTPUT ==="
 else
     EXIT_CODE=0
 fi
+set +x  # Disable command tracing
 
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ Ledit agent failed with exit code: $EXIT_CODE"

@@ -60,5 +60,4 @@ EOF
 echo "Ledit configured with:"
 echo "  Provider: $AI_PROVIDER"
 echo "  Model: $AI_MODEL"
-echo "  MCP setup for github"
 echo "  Max iterations: $MAX_ITERATIONS"
