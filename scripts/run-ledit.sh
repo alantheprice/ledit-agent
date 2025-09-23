@@ -10,6 +10,17 @@ if [ "$LEDIT_DEBUG" == "true" ]; then
     echo "DEBUG: AI_API_KEY=${AI_API_KEY:0:10}..." # Print first 10 chars for security
 fi
 
+# Validate required environment variables
+if [ -z "$LEDIT_WORKSPACE" ]; then
+    echo "❌ ERROR: LEDIT_WORKSPACE is not set"
+    exit 1
+fi
+
+if [ -z "$ISSUE_NUMBER" ]; then
+    echo "❌ ERROR: ISSUE_NUMBER is not set"
+    exit 1
+fi
+
 # Set default paths if not already set
 if [ -z "$ISSUE_CONTEXT_FILE" ]; then
     ISSUE_CONTEXT_FILE="/tmp/ledit-issue-$ISSUE_NUMBER/context.md"
@@ -29,20 +40,8 @@ case "$AI_PROVIDER" in
     openrouter)
         export OPENROUTER_API_KEY="$AI_API_KEY"
         ;;
-    groq)
-        export GROQ_API_KEY="$AI_API_KEY"
-        ;;
     deepinfra)
         export DEEPINFRA_API_KEY="$AI_API_KEY"
-        ;;
-    cerebras)
-        export CEREBRAS_API_KEY="$AI_API_KEY"
-        ;;
-    deepseek)
-        export DEEPSEEK_API_KEY="$AI_API_KEY"
-        ;;
-    anthropic)
-        export ANTHROPIC_API_KEY="$AI_API_KEY"
         ;;
     ollama)
         # Ollama doesn't need API key

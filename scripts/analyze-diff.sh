@@ -11,20 +11,8 @@ case "$AI_PROVIDER" in
     openrouter)
         export OPENROUTER_API_KEY="$AI_API_KEY"
         ;;
-    groq)
-        export GROQ_API_KEY="$AI_API_KEY"
-        ;;
     deepinfra)
         export DEEPINFRA_API_KEY="$AI_API_KEY"
-        ;;
-    cerebras)
-        export CEREBRAS_API_KEY="$AI_API_KEY"
-        ;;
-    deepseek)
-        export DEEPSEEK_API_KEY="$AI_API_KEY"
-        ;;
-    anthropic)
-        export ANTHROPIC_API_KEY="$AI_API_KEY"
         ;;
     ollama)
         # Ollama doesn't need API key

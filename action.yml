@@ -112,7 +112,7 @@ runs:
       run: |
         echo "LEDIT_ACTION_PATH=${{ github.action_path }}" >> $GITHUB_ENV
         echo "LEDIT_WORKSPACE=${{ inputs.workspace-dir }}" >> $GITHUB_ENV
-        echo "LEDIT_TIMEOUT=${{ inputs.timeout-minutes }}" >> $GITHUB_ENV
+        echo "LEDIT_TIMEOUT_MINUTES=${{ inputs.timeout-minutes }}" >> $GITHUB_ENV
         echo "LEDIT_DEBUG=${{ inputs.debug }}" >> $GITHUB_ENV
     
     - name: Install dependencies
@@ -150,6 +150,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.mcp-github-token || inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
         ${{ github.action_path }}/scripts/configure-mcp.sh
     

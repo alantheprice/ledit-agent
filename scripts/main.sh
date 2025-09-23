@@ -30,12 +30,28 @@ if [ -z "$ISSUE_NUMBER" ]; then
     exit 1
 fi
 
+# Validate optional variables have proper defaults
+if [ -z "$USER_PROMPT" ]; then
+    USER_PROMPT=""
+fi
+
+# Set default branch name pattern
+export BRANCH_NAME="issue/$ISSUE_NUMBER"
+
+# Validate ENABLE_MCP has a proper value
+if [ -z "$ENABLE_MCP" ]; then
+    ENABLE_MCP="false"
+elif [ "$ENABLE_MCP" != "true" ] && [ "$ENABLE_MCP" != "false" ]; then
+    echo "WARNING: ENABLE_MCP should be 'true' or 'false', got '$ENABLE_MCP'. Defaulting to 'false'"
+    ENABLE_MCP="false"
+fi
+
 echo "Processing issue #$ISSUE_NUMBER"
 
 # Export for other scripts
 export ISSUE_NUMBER
 export USER_PROMPT
-export BRANCH_NAME="issue/$ISSUE_NUMBER"
+export ENABLE_MCP
 
 # Step 1: Fetch issue details
 echo "📋 Fetching issue details..."

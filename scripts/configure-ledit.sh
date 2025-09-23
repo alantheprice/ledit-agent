@@ -53,23 +53,12 @@ cat > ~/.ledit/config.json << EOF
   "provider_models": {
     "$AI_PROVIDER": "$AI_MODEL"
   },
-  "provider_priority": ["$AI_PROVIDER"],
-  "mcp": {
-    "enabled": false,
-    "servers": {},
-    "auto_start": false,
-    "auto_discover": false,
-    "timeout": 30000000000
-  },
-  "code_style": {},
-  "file_batch_size": 10,
-  "max_concurrent_requests": 5,
-  "request_delay_ms": 100,
-  "enable_security_checks": true
+  "provider_priority": ["$AI_PROVIDER"]
 }
 EOF
 
 echo "Ledit configured with:"
 echo "  Provider: $AI_PROVIDER"
 echo "  Model: $AI_MODEL"
+echo "  MCP setup for github"
 echo "  Max iterations: $MAX_ITERATIONS"
