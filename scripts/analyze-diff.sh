@@ -210,28 +210,76 @@ fi
 
 # Debug: Show final command that will be executed
 echo "=== FINAL COMMAND DEBUG ==="
-echo "Command: timeout ${LEDIT_TIMEOUT_MINUTES:-10}m ledit agent --provider $AI_PROVIDER --model $AI_MODEL --max-iterations ${MAX_ITERATIONS:-180} \"\$(cat $PROMPT_FILE)\""
-echo "Prompt file: $PROMPT_FILE"
-echo "Prompt length: $(wc -c < "$PROMPT_FILE") characters"
-echo "Prompt preview: $(head -c 200 "$PROMPT_FILE")..."
+echo "Command: timeout ${LEDIT_TIMEOUT_MINUTES:-10}m ledit agent \\"
+echo "  --provider '$AI_PROVIDER' \\"
+echo "  --model '$AI_MODEL' \\"
+echo "  --max-iterations ${MAX_ITERATIONS:-180} \\"
+echo "  'prompt from $PROMPT_FILE'"
+echo ""
+echo "Environment:"
+echo "  DEEPINFRA_API_KEY: ${DEEPINFRA_API_KEY:+SET (${#DEEPINFRA_API_KEY} chars)}${DEEPINFRA_API_KEY:-NOT SET}"
+echo "  Working directory: $(pwd)"
+echo "  Ledit version: $(ledit --version 2>/dev/null || echo 'version check failed')"
+echo ""
+echo "Files:"
+echo "  Prompt file: $PROMPT_FILE ($(wc -c < "$PROMPT_FILE") chars)"
+echo "  Context file: $PR_DATA_DIR/context.md ($([ -f "$PR_DATA_DIR/context.md" ] && wc -c < "$PR_DATA_DIR/context.md" || echo 0) chars)"
+echo "  Diff file: $PR_DATA_DIR/full.diff ($([ -f "$PR_DATA_DIR/full.diff" ] && wc -c < "$PR_DATA_DIR/full.diff" || echo 0) chars)"
 echo "============================"
 
 echo "Running ledit agent with timeout..."
 set -x  # Enable command tracing
-if ! timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
-    EXIT_CODE=$?
-    echo "❌ Ledit command failed with exit code: $EXIT_CODE"
-    echo "=== FULL COMMAND OUTPUT ==="
-    cat "$REVIEW_OUTPUT"
-    echo "=== END COMMAND OUTPUT ==="
-else
+
+# Run the ledit command and capture both stdout and stderr
+if timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
     EXIT_CODE=0
+    echo "✅ Ledit command completed successfully"
+else
+    EXIT_CODE=${PIPESTATUS[0]}
+    echo "❌ Ledit command failed with exit code: $EXIT_CODE"
+    
+    # Show the full output for debugging
+    echo "=== FULL LEDIT OUTPUT (last 100 lines) ==="
+    tail -100 "$REVIEW_OUTPUT" 2>/dev/null || echo "No output captured"
+    echo "=== END LEDIT OUTPUT ==="
+    
+    # Check for specific error patterns
+    if [ -f "$REVIEW_OUTPUT" ]; then
+        echo "=== ERROR ANALYSIS ==="
+        
+        if grep -q "401" "$REVIEW_OUTPUT"; then
+            echo "🔑 AUTHENTICATION ERROR: API key is invalid or missing"
+        elif grep -q "403" "$REVIEW_OUTPUT"; then
+            echo "🚫 AUTHORIZATION ERROR: API key lacks required permissions"
+        elif grep -q "404" "$REVIEW_OUTPUT"; then
+            echo "❓ NOT FOUND ERROR: Model or endpoint not found"
+        elif grep -q "429" "$REVIEW_OUTPUT"; then
+            echo "⏱️ RATE LIMIT ERROR: Too many requests"
+        elif grep -q "timeout" "$REVIEW_OUTPUT"; then
+            echo "⏱️ TIMEOUT ERROR: Request took too long"
+        elif grep -q "connection" "$REVIEW_OUTPUT"; then
+            echo "🌐 CONNECTION ERROR: Network connectivity issue"
+        elif grep -q "model" "$REVIEW_OUTPUT"; then
+            echo "🤖 MODEL ERROR: Issue with the specified model"
+        else
+            echo "❓ UNKNOWN ERROR: Check the full output above"
+        fi
+        
+        echo "=== END ERROR ANALYSIS ==="
+    fi
 fi
 set +x  # Disable command tracing
 
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ Ledit agent failed with exit code: $EXIT_CODE"
-    rm -f "$REVIEW_OUTPUT"
+    echo "💡 Troubleshooting tips:"
+    echo "   1. Verify your API key is valid and has the right permissions"
+    echo "   2. Check if the model '${AI_MODEL}' is available on ${AI_PROVIDER}"
+    echo "   3. Try a different model or provider"
+    echo "   4. Check network connectivity to the AI provider"
+    
+    # Don't remove the output file yet - keep it for debugging
+    echo "📁 Debug output saved at: $REVIEW_OUTPUT"
     exit $EXIT_CODE
 fi
 
@@ -268,8 +316,12 @@ if [ -n "$COST_LINE" ]; then
     echo "REVIEW_COST=$COST" >> $GITHUB_ENV
 fi
 
-# Clean up
-rm -f "$REVIEW_OUTPUT"
+# Clean up (only remove on success)
+if [ $EXIT_CODE -eq 0 ]; then
+    rm -f "$REVIEW_OUTPUT"
+else
+    echo "📁 Preserving debug output at: $REVIEW_OUTPUT"
+fi
 
 # Validate that we got valid JSON
 if [ -f "$PR_DATA_DIR/review.json" ] && jq -e . "$PR_DATA_DIR/review.json" > /dev/null 2>&1; then
