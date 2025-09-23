@@ -41,27 +41,31 @@ esac
 # Create API keys file
 cat > ~/.ledit/api_keys.json << EOF
 {
-  "openai_api_key": "$([[ "$AI_PROVIDER" == "openai" ]] && echo "$AI_API_KEY" || echo "")",
-  "openrouter_api_key": "$([[ "$AI_PROVIDER" == "openrouter" ]] && echo "$AI_API_KEY" || echo "")",
-  "groq_api_key": "$([[ "$AI_PROVIDER" == "groq" ]] && echo "$AI_API_KEY" || echo "")",
-  "deepinfra_api_key": "$([[ "$AI_PROVIDER" == "deepinfra" ]] && echo "$AI_API_KEY" || echo "")",
-  "cerebras_api_key": "$([[ "$AI_PROVIDER" == "cerebras" ]] && echo "$AI_API_KEY" || echo "")",
-  "deepseek_api_key": "$([[ "$AI_PROVIDER" == "deepseek" ]] && echo "$AI_API_KEY" || echo "")",
-  "anthropic_api_key": "$([[ "$AI_PROVIDER" == "anthropic" ]] && echo "$AI_API_KEY" || echo "")"
+  "$AI_PROVIDER": "$AI_API_KEY"
 }
 EOF
 
 # Create configuration file
 cat > ~/.ledit/config.json << EOF
 {
-  "editing_model": "$AI_MODEL",
-  "agent_model": "$AI_MODEL",
-  "workspace_model": "$AI_MODEL",
-  "orchestration_model": "$AI_MODEL",
-  "summarization_model": "$AI_MODEL",
-  "code_style": "Follow the existing code style and patterns in the repository. Maintain consistency with surrounding code.",
-  "max_iterations": $MAX_ITERATIONS,
-  "provider": "$AI_PROVIDER"
+  "version": "2.0",
+  "last_used_provider": "$AI_PROVIDER",
+  "provider_models": {
+    "$AI_PROVIDER": "$AI_MODEL"
+  },
+  "provider_priority": ["$AI_PROVIDER"],
+  "mcp": {
+    "enabled": false,
+    "servers": {},
+    "auto_start": false,
+    "auto_discover": false,
+    "timeout": 30000000000
+  },
+  "code_style": {},
+  "file_batch_size": 10,
+  "max_concurrent_requests": 5,
+  "request_delay_ms": 100,
+  "enable_security_checks": true
 }
 EOF
 
