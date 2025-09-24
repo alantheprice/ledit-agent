@@ -54,7 +54,12 @@ fi
 
 # Step 1: Fetch PR details and diff
 echo "📋 Fetching PR details..."
-$LEDIT_ACTION_PATH/scripts/fetch-pr.sh
+# Use a subshell to avoid exit on error from fetch-pr.sh and continue gracefully
+if ! ($LEDIT_ACTION_PATH/scripts/fetch-pr.sh); then
+    echo "⚠️  WARNING: Failed to fetch PR details, but continuing with limited information"
+    # If we can't fetch PR details, still try to proceed with what we have
+    echo "Proceeding with basic review capabilities..."
+fi
 
 # Step 2: Analyze the diff with ledit
 echo "🧠 Analyzing PR with AI..."

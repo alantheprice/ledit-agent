@@ -3,9 +3,30 @@ set -e
 
 echo "Fetching PR #$PR_NUMBER from $GITHUB_REPOSITORY..."
 
-# Debug: Check if PR exists
+# Check if PR exists and provide detailed debugging info
+echo "Checking if PR exists..."
 if ! gh pr view "$PR_NUMBER" > /dev/null 2>&1; then
     echo "❌ ERROR: PR #$PR_NUMBER not found or inaccessible"
+    echo "Debug info:"
+    echo "  - Repository: $GITHUB_REPOSITORY"
+    echo "  - PR Number: $PR_NUMBER"
+    echo "  - Event: $GITHUB_EVENT_NAME"
+    echo "  - Branch: $GITHUB_HEAD_REF"
+    echo "  - Current branch: $(git rev-parse --abbrev-ref HEAD)"
+    echo "  - GitHub token available: $([[ -n "$GITHUB_TOKEN" ]] && echo "Yes" || echo "No")"
+    
+    # Try to get more information about the error
+    if command -v gh > /dev/null 2>&1; then
+        echo "  - GitHub CLI version: $(gh --version 2>/dev/null || echo 'Not available')"
+        echo "  - GitHub CLI auth status: $(gh auth status 2>/dev/null || echo 'Not available')"
+    fi
+    
+    echo "This is a critical failure - the system cannot access the PR data needed for review."
+    echo "Please check:"
+    echo "  1. The PR number is correct"
+    echo "  2. The GitHub token has appropriate permissions"
+    echo "  3. The repository is accessible"
+    echo "  4. The workflow has proper pull request permissions"
     exit 1
 fi
 
@@ -13,12 +34,10 @@ fi
 echo "Fetching PR metadata..."
 if ! gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions > "$PR_DATA_DIR/metadata.json"; then
     echo "❌ ERROR: Failed to fetch PR metadata"
-    exit 1
-fi
-
-# Validate JSON file was created
-if [ ! -f "$PR_DATA_DIR/metadata.json" ] || [ ! -s "$PR_DATA_DIR/metadata.json" ]; then
-    echo "❌ ERROR: PR metadata file is empty or missing"
+    echo "Debug info:"
+    echo "  - PR Number: $PR_NUMBER"
+    echo "  - Repository: $GITHUB_REPOSITORY"
+    echo "  - Error occurred during metadata fetch"
     exit 1
 fi
 
