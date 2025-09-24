@@ -52,7 +52,13 @@ IMPORTANT: The context.md file contains full details of any linked GitHub issues
   2. Check if all requirements from the issue are met
   3. Flag any missing functionality as a "major" or "critical" issue
 
-Your task is to identify issues that NEED TO BE FIXED. Only comment on actual problems, not observations.
+Your task is to identify ALL issues that NEED TO BE FIXED - this is a COMPREHENSIVE review. 
+DO NOT stop after finding the first issue. Continue analyzing until you are confident you've found all significant problems.
+
+For very large PRs (200+ lines changed), maintain an external tracking system to capture all findings:
+- Keep a running list of issues in PR_DATA_DIR_PLACEHOLDER/issues_found.txt
+- Log each issue as you find it to prevent loss during context limitations
+- This helps ensure comprehensive coverage even when context window is limited
 
 Comment threshold is 'COMMENT_THRESHOLD_PLACEHOLDER':
 - high: ONLY critical issues (will break production, security vulnerabilities, data loss risks)
@@ -87,7 +93,7 @@ These are MAXIMUMS. If there are no issues, make NO comments.
 
 Based on review type 'REVIEW_TYPE_PLACEHOLDER':
 - comprehensive: Look for all types of issues
-- security: Focus only on security issues
+- security: Focus only on security issues  
 - performance: Focus only on performance issues
 - style: Skip review if comment threshold is medium/high
 
@@ -133,6 +139,31 @@ Verify any claims made in the PR by checking the actual codebase:
 - Files and directories referenced
 - Features and functionality described
 - Any technical claims or implementation details
+
+REVIEW GUIDELINES FOR THOROUGHNESS:
+- Look for patterns of issues (multiple files with similar problems)
+- Check for edge cases that might not be obvious
+- Validate that all claims in the PR description are correct
+- Ensure implementation matches requirements from linked issues
+- Look for potential logic errors that might not cause immediate failures but are problematic
+- Check for missing error handling or validation
+- Verify that any new features are properly tested
+- Look for security vulnerabilities that could be missed in a cursory review
+
+CONTINUOUS ANALYSIS:
+- Keep asking yourself "What else could be wrong?"
+- Don't assume things are correct just because they look fine at first glance
+- Re-read your findings to make sure you haven't missed anything
+- Even if you find one critical issue, keep looking for more
+- Your goal is to find ALL significant problems, not just the most obvious ones
+
+EXTERNAL TRACKING FOR LARGE REVIEWS:
+- For large PRs (>200 lines changed), maintain an external issues log:
+  - Create PR_DATA_DIR_PLACEHOLDER/issues_found.txt to track all findings
+  - Log each issue as discovered to prevent loss due to context limitations
+  - This ensures comprehensive coverage regardless of context window size
+
+Remember: You are being paid to find issues, not to praise code. Focus on what needs improvement, not what's good.
 PROMPT_EOF
 
 # Replace placeholders with actual values
