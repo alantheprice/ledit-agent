@@ -22,9 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # For PR reviews, ensure we check out the PR branch
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
-          # Fetch full history to analyze changes properly
+           # For PR reviews, ensure we check out the PR branch (works for both pull_request and issue_comment events)
+          ref: ${{ github.event.pull_request.head.ref || github.event.issue.pull_request.head.ref }}
+           # Fetch full history to analyze changes properly
           fetch-depth: 0
           
       - uses: alantheprice/ledit-agent@v1

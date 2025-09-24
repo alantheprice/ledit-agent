@@ -3,7 +3,7 @@ set -e
 
 echo "======================================"
 echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.03"
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.04"
 echo "📅 Script timestamp: $(date)"
 echo "📁 Script path: ${BASH_SOURCE[0]}"
 echo "======================================"
@@ -177,12 +177,17 @@ if [ -f "$PR_DATA_DIR/full.diff" ]; then
     echo "🔧 CHECKPOINT: Found added files: $ADDED_FILES"
     
     if [ -n "$ADDED_FILES" ]; then
+        echo "🔧 CHECKPOINT: Checking if added files exist in current checkout"
         MISSING_COUNT=0
         for file in $ADDED_FILES; do
             if [ ! -f "$file" ]; then
-                ((MISSING_COUNT++))
+                MISSING_COUNT=$((MISSING_COUNT + 1))
+                echo "🔧 Missing file: $file"
+            else
+                echo "🔧 Found file: $file"
             fi
         done
+        echo "🔧 CHECKPOINT: File check complete, missing count: $MISSING_COUNT"
         
         if [ "$MISSING_COUNT" -gt 0 ]; then
             echo "⚠️  WARNING: Some files being added in this PR don't exist in the current checkout."
