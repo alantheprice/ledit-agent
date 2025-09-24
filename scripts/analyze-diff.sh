@@ -168,16 +168,6 @@ echo "MAX_ITERATIONS=${MAX_ITERATIONS:-80}"
 echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
 echo "🔍 About to proceed with ledit command checks..."
 
-# Create a temporary file to capture output
-REVIEW_OUTPUT=$(mktemp)
-
-# Run ledit agent with review focus in the repository directory
-echo "Starting ledit agent for review..."
-echo "Working directory: $(pwd)"
-
-# Ensure we're in the repository root for code exploration
-cd "$GITHUB_WORKSPACE" || cd "$(git rev-parse --show-toplevel)" || true
-
 # Check if files from the PR diff actually exist (indicates correct branch)
 if [ -f "$PR_DATA_DIR/full.diff" ]; then
     # Extract first few added files from the diff
