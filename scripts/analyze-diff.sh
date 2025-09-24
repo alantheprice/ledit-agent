@@ -3,7 +3,7 @@ set -e
 
 echo "======================================"
 echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.01"
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.02"
 echo "📅 Script timestamp: $(date)"
 echo "📁 Script path: ${BASH_SOURCE[0]}"
 echo "======================================"
@@ -169,7 +169,9 @@ echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
 echo "🔍 About to proceed with ledit command checks..."
 
 # Check if files from the PR diff actually exist (indicates correct branch)
+echo "🔧 CHECKPOINT: Starting diff file checks"
 if [ -f "$PR_DATA_DIR/full.diff" ]; then
+    echo "🔧 CHECKPOINT: Diff file exists, extracting added files"
     # Extract first few added files from the diff
     ADDED_FILES=$(grep -E "^\+\+\+ b/" "$PR_DATA_DIR/full.diff" | head -3 | sed 's/^+++ b\///' | grep -v "^/dev/null")
     
@@ -188,7 +190,10 @@ if [ -f "$PR_DATA_DIR/full.diff" ]; then
             echo ""
         fi
     fi
+else
+    echo "🔧 CHECKPOINT: No diff file found"
 fi
+echo "🔧 CHECKPOINT: Finished diff file checks"
 
 # Debug: Check if ledit command works
 echo "🔍 Checking if ledit command is available..."
