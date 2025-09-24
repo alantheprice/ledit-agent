@@ -3,7 +3,7 @@ set -e
 
 echo "======================================"
 echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.04"
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.05"
 echo "📅 Script timestamp: $(date)"
 echo "📁 Script path: ${BASH_SOURCE[0]}"
 echo "======================================"
@@ -361,8 +361,24 @@ else
 fi
 
 # Validate that we got valid JSON
+echo "🔧 CHECKPOINT: Validating review.json"
+if [ -f "$PR_DATA_DIR/review.json" ]; then
+    echo "🔧 review.json exists, checking JSON validity..."
+    if jq -e . "$PR_DATA_DIR/review.json" > /dev/null 2>&1; then
+        echo "✅ Review analysis completed successfully"
+    else
+        echo "⚠️ Warning: JSON validation failed"
+        echo "🔧 JSON content preview:"
+        head -10 "$PR_DATA_DIR/review.json" || echo "Could not read file"
+        echo "🔧 JQ error:"
+        jq . "$PR_DATA_DIR/review.json" 2>&1 || echo "JQ command failed"
+    fi
+else
+    echo "❌ review.json file missing"
+fi
+
 if [ -f "$PR_DATA_DIR/review.json" ] && jq -e . "$PR_DATA_DIR/review.json" > /dev/null 2>&1; then
-    echo "✅ Review analysis completed successfully"
+    echo "✅ Final validation: Review analysis completed successfully"
 else
     echo "⚠️ Warning: Could not extract valid JSON review data"
     # Create a minimal review.json for fallback
