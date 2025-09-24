@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v2.0 (with enhanced error reporting)"
+echo "📅 Script timestamp: $(date)"
+echo "📁 Script path: ${BASH_SOURCE[0]}"
 echo "Analyzing PR diff with ledit..."
 
 # Set API key environment variable based on provider
@@ -228,45 +231,70 @@ echo "  Diff file: $PR_DATA_DIR/full.diff ($([ -f "$PR_DATA_DIR/full.diff" ] && 
 echo "============================"
 
 echo "Running ledit agent with timeout..."
+echo "🚀 EXECUTING LEDIT COMMAND NOW..."
 set -x  # Enable command tracing
 
 # Run the ledit command and capture both stdout and stderr
-if timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"; then
-    EXIT_CODE=0
+timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"
+EXIT_CODE=${PIPESTATUS[0]}
+
+set +x  # Disable command tracing
+
+if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Ledit command completed successfully"
 else
-    EXIT_CODE=${PIPESTATUS[0]}
     echo "❌ Ledit command failed with exit code: $EXIT_CODE"
+    echo "🔍 IMMEDIATE ERROR INVESTIGATION:"
     
     # Show the full output for debugging
     echo "=== FULL LEDIT OUTPUT (last 100 lines) ==="
-    tail -100 "$REVIEW_OUTPUT" 2>/dev/null || echo "No output captured"
+    if [ -f "$REVIEW_OUTPUT" ]; then
+        tail -100 "$REVIEW_OUTPUT" 2>/dev/null || echo "Failed to read output file"
+    else
+        echo "❌ No output file created at: $REVIEW_OUTPUT"
+    fi
     echo "=== END LEDIT OUTPUT ==="
     
     # Check for specific error patterns
     if [ -f "$REVIEW_OUTPUT" ]; then
         echo "=== ERROR ANALYSIS ==="
         
-        if grep -q "401" "$REVIEW_OUTPUT"; then
+        if grep -qi "401\|unauthorized\|invalid.*key" "$REVIEW_OUTPUT"; then
             echo "🔑 AUTHENTICATION ERROR: API key is invalid or missing"
-        elif grep -q "403" "$REVIEW_OUTPUT"; then
+        elif grep -qi "403\|forbidden\|permission" "$REVIEW_OUTPUT"; then
             echo "🚫 AUTHORIZATION ERROR: API key lacks required permissions"
-        elif grep -q "404" "$REVIEW_OUTPUT"; then
+        elif grep -qi "404\|not found" "$REVIEW_OUTPUT"; then
             echo "❓ NOT FOUND ERROR: Model or endpoint not found"
-        elif grep -q "429" "$REVIEW_OUTPUT"; then
+        elif grep -qi "429\|rate.*limit\|quota" "$REVIEW_OUTPUT"; then
             echo "⏱️ RATE LIMIT ERROR: Too many requests"
-        elif grep -q "timeout" "$REVIEW_OUTPUT"; then
+        elif grep -qi "timeout\|timed out" "$REVIEW_OUTPUT"; then
             echo "⏱️ TIMEOUT ERROR: Request took too long"
-        elif grep -q "connection" "$REVIEW_OUTPUT"; then
+        elif grep -qi "connection\|network\|dns" "$REVIEW_OUTPUT"; then
             echo "🌐 CONNECTION ERROR: Network connectivity issue"
-        elif grep -q "model" "$REVIEW_OUTPUT"; then
+        elif grep -qi "model.*not.*available\|model.*error" "$REVIEW_OUTPUT"; then
             echo "🤖 MODEL ERROR: Issue with the specified model"
+        elif grep -qi "error\|failed" "$REVIEW_OUTPUT"; then
+            echo "❓ GENERIC ERROR DETECTED: Check the full output above"
         else
-            echo "❓ UNKNOWN ERROR: Check the full output above"
+            echo "❓ NO OBVIOUS ERROR PATTERN: Exit code $EXIT_CODE with no clear error message"
         fi
         
         echo "=== END ERROR ANALYSIS ==="
+    else
+        echo "❌ CANNOT ANALYZE: Output file missing"
     fi
+    
+    echo "💡 Troubleshooting tips:"
+    echo "   1. Verify your API key is valid and has the right permissions"
+    echo "   2. Check if the model '${AI_MODEL}' is available on ${AI_PROVIDER}"
+    echo "   3. Try a different model or provider"
+    echo "   4. Check network connectivity to the AI provider"
+    
+    # Don't remove the output file yet - keep it for debugging
+    echo "📁 Debug output saved at: $REVIEW_OUTPUT"
+    
+    # FORCE EXIT HERE to ensure we see this error output
+    exit $EXIT_CODE
 fi
 set +x  # Disable command tracing
 
