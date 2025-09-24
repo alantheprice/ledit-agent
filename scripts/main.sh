@@ -25,18 +25,20 @@ elif [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" =
     ISSUE_NUMBER=$(jq -r '.issue.number // .inputs.issue_number // empty' "$GITHUB_EVENT_PATH")
 fi
 
-if [ -z "$ISSUE_NUMBER" ]; then
-    echo "ERROR: No issue number found"
-    exit 1
-fi
-
 # Validate optional variables have proper defaults
 if [ -z "$USER_PROMPT" ]; then
     USER_PROMPT=""
 fi
 
-# Set default branch name pattern
-export BRANCH_NAME="issue/$ISSUE_NUMBER"
+# If no issue number is provided, we're in PR mode
+if [ -z "$ISSUE_NUMBER" ]; then
+    echo "No issue number found - proceeding in PR mode"
+    # Set default branch name for PR mode
+    export BRANCH_NAME="ledit-pr-$(date +%s)"
+else
+    # Set default branch name pattern for issue mode
+    export BRANCH_NAME="issue/$ISSUE_NUMBER"
+fi
 
 # Validate ENABLE_MCP has a proper value
 if [ -z "$ENABLE_MCP" ]; then
@@ -46,16 +48,20 @@ elif [ "$ENABLE_MCP" != "true" ] && [ "$ENABLE_MCP" != "false" ]; then
     ENABLE_MCP="false"
 fi
 
-echo "Processing issue #$ISSUE_NUMBER"
+echo "Processing $([ -z "$ISSUE_NUMBER" ] && echo "PR without issue" || echo "issue #$ISSUE_NUMBER")"
 
 # Export for other scripts
 export ISSUE_NUMBER
 export USER_PROMPT
 export ENABLE_MCP
 
-# Step 1: Fetch issue details
-echo "📋 Fetching issue details..."
-$LEDIT_ACTION_PATH/scripts/fetch-issue.sh
+# Step 1: Fetch issue details (only if there's an issue)
+if [ -n "$ISSUE_NUMBER" ]; then
+    echo "📋 Fetching issue details..."
+    $LEDIT_ACTION_PATH/scripts/fetch-issue.sh
+else
+    echo "No issue number provided. Skipping issue-specific steps and proceeding directly with PR creation."
+fi
 
 # Step 2: Create or checkout branch
 echo "🌿 Setting up branch..."
@@ -65,8 +71,10 @@ $LEDIT_ACTION_PATH/scripts/setup-branch.sh
 echo "🧠 Running ledit agent..."
 if ! $LEDIT_ACTION_PATH/scripts/run-ledit.sh; then
     echo "❌ Ledit agent failed to run successfully"
-    # Report failure to issue
-    $LEDIT_ACTION_PATH/scripts/report-status.sh "agent-failed"
+    # Report failure to issue if applicable
+    if [ -n "$ISSUE_NUMBER" ]; then
+        $LEDIT_ACTION_PATH/scripts/report-status.sh "agent-failed"
+    fi
     exit 1
 fi
 
@@ -85,8 +93,10 @@ else
     echo "ℹ️ No changes were made by ledit"
     echo "success=false" >> $GITHUB_OUTPUT
     
-    # Still report back to the issue
-    $LEDIT_ACTION_PATH/scripts/report-status.sh "no-changes"
+    # Still report back to the issue if applicable
+    if [ -n "$ISSUE_NUMBER" ]; then
+        $LEDIT_ACTION_PATH/scripts/report-status.sh "no-changes"
+    fi
 fi
 
 echo "🎯 Ledit Issue Solver completed"
