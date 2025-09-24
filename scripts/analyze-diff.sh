@@ -3,7 +3,7 @@ set -e
 
 echo "======================================"
 echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.02"
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.03"
 echo "📅 Script timestamp: $(date)"
 echo "📁 Script path: ${BASH_SOURCE[0]}"
 echo "======================================"
@@ -172,8 +172,9 @@ echo "🔍 About to proceed with ledit command checks..."
 echo "🔧 CHECKPOINT: Starting diff file checks"
 if [ -f "$PR_DATA_DIR/full.diff" ]; then
     echo "🔧 CHECKPOINT: Diff file exists, extracting added files"
-    # Extract first few added files from the diff
-    ADDED_FILES=$(grep -E "^\+\+\+ b/" "$PR_DATA_DIR/full.diff" | head -3 | sed 's/^+++ b\///' | grep -v "^/dev/null")
+    # Extract first few added files from the diff (handle case where no files match)
+    ADDED_FILES=$(grep -E "^\+\+\+ b/" "$PR_DATA_DIR/full.diff" | head -3 | sed 's/^+++ b\///' | grep -v "^/dev/null" || true)
+    echo "🔧 CHECKPOINT: Found added files: $ADDED_FILES"
     
     if [ -n "$ADDED_FILES" ]; then
         MISSING_COUNT=0
