@@ -44,10 +44,13 @@ Your current working directory is the repository root. You can use standard comm
 
 DO NOT make assumptions based only on the diff - validate everything against the actual code.
 
-IMPORTANT: The context.md file contains linked GitHub issues if this PR claims to fix any. If issues are linked:
-1. Verify the implementation actually solves the stated problems
-2. Check if all requirements from the issue are met
-3. Flag any missing functionality as a "major" or "critical" issue
+IMPORTANT: The context.md file contains full details of any linked GitHub issues that this PR addresses. 
+- The linked issues section includes the complete issue title, description, and comments
+- You DO NOT need to search elsewhere for issue context - it's all in context.md
+- If issues are linked, you MUST:
+  1. Verify the implementation actually solves the stated problems in the linked issues
+  2. Check if all requirements from the issue are met
+  3. Flag any missing functionality as a "major" or "critical" issue
 
 Your task is to identify issues that NEED TO BE FIXED. Only comment on actual problems, not observations.
 
@@ -241,6 +244,11 @@ echo "============================"
 
 echo "Running ledit agent with timeout..."
 echo "🚀 EXECUTING LEDIT COMMAND NOW..."
+
+# Create temporary file for output capture
+REVIEW_OUTPUT=$(mktemp)
+echo "🔧 Output will be captured to: $REVIEW_OUTPUT"
+
 set -x  # Enable command tracing
 
 # Run the ledit command and capture both stdout and stderr
