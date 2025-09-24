@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
 
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v2.0 (with enhanced error reporting)"
+echo "======================================"
+echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
+echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.01"
 echo "📅 Script timestamp: $(date)"
 echo "📁 Script path: ${BASH_SOURCE[0]}"
+echo "======================================"
 echo "Analyzing PR diff with ledit..."
 
 # Set API key environment variable based on provider
@@ -163,6 +166,7 @@ echo "AI_MODEL=$AI_MODEL"
 echo "LEDIT_TIMEOUT_MINUTES=${LEDIT_TIMEOUT_MINUTES:-10}"
 echo "MAX_ITERATIONS=${MAX_ITERATIONS:-80}"
 echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+echo "🔍 About to proceed with ledit command checks..."
 
 # Create a temporary file to capture output
 REVIEW_OUTPUT=$(mktemp)
@@ -197,11 +201,15 @@ if [ -f "$PR_DATA_DIR/full.diff" ]; then
 fi
 
 # Debug: Check if ledit command works
+echo "🔍 Checking if ledit command is available..."
+echo "PATH: $PATH"
 if ! command -v ledit &> /dev/null; then
     echo "❌ ERROR: ledit command not found in PATH"
-    echo "PATH: $PATH"
-    echo "which ledit: $(which ledit)"
+    echo "which ledit: $(which ledit 2>&1 || echo 'which command failed')"
+    echo "ls /home/runner/go/bin/: $(ls -la /home/runner/go/bin/ 2>&1 || echo 'directory not found')"
     exit 1
+else
+    echo "✅ ledit command found at: $(which ledit)"
 fi
 
 # Debug: Test basic ledit functionality
