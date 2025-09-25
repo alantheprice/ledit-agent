@@ -138,4 +138,35 @@ Please review the proposed changes and let me know if any adjustments are needed
     fi
 fi
 
+# Auto-review functionality: add /ledit-review comment if enabled
+if [ "$AUTO_REVIEW" = "true" ]; then
+    echo "🔍 Auto-review enabled - checking if review workflow exists..."
+    
+    # Check if there's likely a review workflow in the repository
+    if [ -d ".github/workflows" ]; then
+        REVIEW_WORKFLOWS=$(find .github/workflows -name "*.yml" -o -name "*.yaml" | xargs grep -l "mode.*review\|review.*mode" 2>/dev/null || true)
+        
+        if [ -n "$REVIEW_WORKFLOWS" ]; then
+            echo "✅ Found review workflows: $REVIEW_WORKFLOWS - adding /ledit-review comment to PR #$PR_NUMBER"
+            
+            # Add a small delay to ensure PR is fully created
+            sleep 2
+            
+            # Add the /ledit-review comment
+            gh pr comment "$PR_NUMBER" --body "/ledit-review"
+            
+            echo "✅ Auto-review comment added"
+        else
+            echo "⚠️  WARNING: Auto-review enabled but no review workflow detected in .github/workflows/*.yml"
+            echo "⚠️  The /ledit-review comment will be ignored without a review workflow configuration"
+            echo "⚠️  To fix this, create a .github/workflows/ledit-review.yml file with mode: 'review'"
+        fi
+    else
+        echo "⚠️  WARNING: Auto-review enabled but no .github/workflows directory found"
+        echo "⚠️  The /ledit-review comment will be ignored without a review workflow configuration"
+    fi
+else
+    echo "ℹ️ Auto-review disabled (AUTO_REVIEW=$AUTO_REVIEW)"
+fi
+
 echo "Pull request ready: $PR_URL"

@@ -39,3 +39,4 @@ jobs:
           review-type: 'comprehensive'     # comprehensive, security, performance, style
           comment-threshold: 'medium'       # low, medium, high - when to post inline comments
           summary-only: 'false'            # If true, only posts summary, no inline comments
+          auto-review: 'false'             # If true, automatically adds /ledit-review comment after solving issues

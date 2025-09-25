@@ -12,6 +12,7 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 - 🔄 **Iterative Development** - Refine implementations with follow-up commands
 - 🌿 **Smart Git Management** - Creates branches and pull requests automatically
 - 🔗 **PR-Aware Context** - Automatically includes PR reviews and feedback when working on issues
+- 🔄 **Auto-Review Integration** - Optionally trigger PR reviews automatically after solving issues
 
 ### Code Review
 - 🔍 **Comprehensive PR Analysis** - Thorough review of code changes
@@ -252,6 +253,7 @@ Both modes support these options:
     timeout-minutes: 20              # Max runtime (default: 10)
     ledit-version: 'latest'         # Specific ledit version (e.g., 'v0.5.10')
     debug: 'false'                  # Enable debug logging
+    auto-review: 'false'            # Auto-add /ledit-review comment after solving issues
 ```
 
 ### Issue Solving Options

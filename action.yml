@@ -82,6 +82,12 @@ inputs:
     description: 'Working directory for ledit'
     required: false
     default: '.'
+  
+  # Auto-review configuration
+  auto-review:
+    description: 'Automatically add /ledit-review comment to PR after solving issue'
+    required: false
+    default: 'false'
 
 outputs:
   success:
@@ -169,6 +175,7 @@ runs:
         REVIEW_TYPE: ${{ inputs.review-type }}
         COMMENT_THRESHOLD: ${{ inputs.comment-threshold }}
         SUMMARY_ONLY: ${{ inputs.summary-only }}
+        AUTO_REVIEW: ${{ inputs.auto-review }}
       run: |
         if [ "${{ inputs.mode }}" == "review" ]; then
           ${{ github.action_path }}/scripts/review-pr.sh
