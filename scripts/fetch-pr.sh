@@ -39,7 +39,8 @@ PR_VIEW_OUTPUT=$(gh pr view "$PR_NUMBER" 2>&1) || {
 
 # Fetch PR metadata including head SHA
 echo "Fetching PR metadata..."
-if ! gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions > "$PR_DATA_DIR/metadata.json"; then
+# Use minimal fields to avoid permission issues with statusCheckRollup
+if ! gh pr view "$PR_NUMBER" --json number,title,body,author,baseRefName,headRefName,headRefOid,files > "$PR_DATA_DIR/metadata.json"; then
     echo "❌ ERROR: Failed to fetch PR metadata"
     echo "Debug info:"
     echo "  - PR Number: $PR_NUMBER"
@@ -66,9 +67,9 @@ if ! gh pr diff "$PR_NUMBER" > "$PR_DATA_DIR/full.diff"; then
     echo "# Unable to fetch diff for PR #$PR_NUMBER" > "$PR_DATA_DIR/full.diff"
 fi
 
-# Fetch file list with changes stats
+# Fetch file list (simpler version without stats to avoid permission issues)
 echo "Fetching file list..."
-if ! gh pr view "$PR_NUMBER" --json files --jq '.files[] | "\(.path) +\(.additions) -\(.deletions)"' > "$PR_DATA_DIR/files.txt" 2>/dev/null; then
+if ! gh pr view "$PR_NUMBER" --json files --jq '.files[].path' > "$PR_DATA_DIR/files.txt" 2>/dev/null; then
     echo "⚠️  WARNING: Failed to fetch file list"
     echo "# Unable to fetch file list" > "$PR_DATA_DIR/files.txt"
 fi
