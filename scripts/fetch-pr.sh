@@ -35,7 +35,7 @@ PR_VIEW_OUTPUT=$(gh pr view "$PR_NUMBER" 2>&1) || {
     echo "  3. The repository is accessible"
     echo "  4. The workflow has proper pull request permissions"
     exit 1
-fi
+}
 
 # Fetch PR metadata including head SHA
 echo "Fetching PR metadata..."
