@@ -8,8 +8,11 @@ mkdir -p "$PR_DATA_DIR"
 
 # Check if PR exists and provide detailed debugging info
 echo "Checking if PR exists..."
-if ! gh pr view "$PR_NUMBER" > /dev/null 2>&1; then
-    echo "❌ ERROR: PR #$PR_NUMBER not found or inaccessible"
+PR_VIEW_OUTPUT=$(gh pr view "$PR_NUMBER" 2>&1) || {
+    echo "❌ ERROR: Failed to fetch PR #$PR_NUMBER"
+    echo "Actual error message from GitHub CLI:"
+    echo "$PR_VIEW_OUTPUT"
+    echo ""
     echo "Debug info:"
     echo "  - Repository: $GITHUB_REPOSITORY"
     echo "  - PR Number: $PR_NUMBER"
