@@ -52,43 +52,25 @@ if [ -n "$GITHUB_HEAD_REF" ]; then
     fi
 fi
 
-# Step 1: Fetch PR details and diff
+# Step 1: Fetch PR details and diff - MANDATORY for review
 echo "📋 Fetching PR details..."
 # Ensure PR data directory exists
 mkdir -p "$PR_DATA_DIR"
 
-# Run fetch-pr.sh but don't exit on failure - create fallback context files if needed
-if $LEDIT_ACTION_PATH/scripts/fetch-pr.sh; then
-    echo "✅ PR details fetched successfully"
-else
-    echo "⚠️  WARNING: Failed to fetch PR details, creating fallback context files"
-    
-    # Create minimal context files to ensure downstream scripts work
-    if [ ! -f "$PR_DATA_DIR/context.md" ]; then
-        cat > "$PR_DATA_DIR/context.md" << EOF
-# Pull Request #$PR_NUMBER - Limited Information
-
-**WARNING**: Unable to fetch complete PR details. Reviewing with limited information.
-
-## Review Instructions
-- Review Type: $REVIEW_TYPE
-- Comment Threshold: $COMMENT_THRESHOLD
-- Summary Only: $SUMMARY_ONLY
-
-Please review the available code changes. Some PR metadata may be missing.
-EOF
-    fi
-    
-    if [ ! -f "$PR_DATA_DIR/full.diff" ]; then
-        echo "# Unable to fetch PR diff - reviewing current code state" > "$PR_DATA_DIR/full.diff"
-    fi
-    
-    if [ ! -f "$PR_DATA_DIR/files.txt" ]; then
-        echo "# Unable to fetch file list" > "$PR_DATA_DIR/files.txt"
-    fi
-    
-    echo "Proceeding with limited review capabilities..."
+# PR details are MANDATORY for review functionality
+if ! $LEDIT_ACTION_PATH/scripts/fetch-pr.sh; then
+    echo "❌ CRITICAL ERROR: Failed to fetch PR details"
+    echo "PR review cannot proceed without PR metadata and diff information"
+    echo ""
+    echo "Please check:"
+    echo "1. The PR #$PR_NUMBER exists and is accessible"
+    echo "2. GitHub token has appropriate pull request permissions"
+    echo "3. The repository $GITHUB_REPOSITORY is accessible"
+    echo "4. Network connectivity to GitHub API"
+    exit 1
 fi
+
+echo "✅ PR details fetched successfully"
 
 # Step 2: Analyze the diff with ledit
 echo "🧠 Analyzing PR with AI..."
