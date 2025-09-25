@@ -6,12 +6,12 @@ echo "Fetching PR #$PR_NUMBER from $GITHUB_REPOSITORY..."
 # Create data directory immediately to ensure context files can be created
 mkdir -p "$PR_DATA_DIR"
 
-# Check if PR exists and provide detailed debugging info
+# Check if PR exists using REST API to avoid GraphQL permission issues
 echo "Checking if PR exists..."
-PR_VIEW_OUTPUT=$(gh pr view "$PR_NUMBER" 2>&1) || {
+PR_CHECK_OUTPUT=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.number' 2>&1) || {
     echo "❌ ERROR: Failed to fetch PR #$PR_NUMBER"
-    echo "Actual error message from GitHub CLI:"
-    echo "$PR_VIEW_OUTPUT"
+    echo "Actual error message from GitHub API:"
+    echo "$PR_CHECK_OUTPUT"
     echo ""
     echo "Debug info:"
     echo "  - Repository: $GITHUB_REPOSITORY"
@@ -37,10 +37,9 @@ PR_VIEW_OUTPUT=$(gh pr view "$PR_NUMBER" 2>&1) || {
     exit 1
 }
 
-# Fetch PR metadata including head SHA
+# Fetch PR metadata using REST API to avoid GraphQL permission issues
 echo "Fetching PR metadata..."
-# Use minimal fields to avoid permission issues with statusCheckRollup
-if ! gh pr view "$PR_NUMBER" --json number,title,body,author,baseRefName,headRefName,headRefOid,files > "$PR_DATA_DIR/metadata.json"; then
+if ! gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > "$PR_DATA_DIR/metadata.json"; then
     echo "❌ ERROR: Failed to fetch PR metadata"
     echo "Debug info:"
     echo "  - PR Number: $PR_NUMBER"
@@ -67,9 +66,9 @@ if ! gh pr diff "$PR_NUMBER" > "$PR_DATA_DIR/full.diff"; then
     echo "# Unable to fetch diff for PR #$PR_NUMBER" > "$PR_DATA_DIR/full.diff"
 fi
 
-# Fetch file list (simpler version without stats to avoid permission issues)
+# Fetch file list using REST API to avoid GraphQL permission issues
 echo "Fetching file list..."
-if ! gh pr view "$PR_NUMBER" --json files --jq '.files[].path' > "$PR_DATA_DIR/files.txt" 2>/dev/null; then
+if ! gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename' > "$PR_DATA_DIR/files.txt" 2>/dev/null; then
     echo "⚠️  WARNING: Failed to fetch file list"
     echo "# Unable to fetch file list" > "$PR_DATA_DIR/files.txt"
 fi
@@ -96,7 +95,7 @@ fi
 
 # Fetch existing comments to avoid duplicates
 echo "Fetching existing comments..."
-gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' > "$PR_DATA_DIR/existing_comments.txt" 2>/dev/null || true
+gh api "/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --jq '.[].body' > "$PR_DATA_DIR/existing_comments.txt" 2>/dev/null || true
 
 # Check for linked issues
 echo "Checking for linked issues..."
@@ -110,28 +109,8 @@ if [[ "$HEAD_BRANCH" =~ ^issue/([0-9]+) ]]; then
     echo "${BASH_REMATCH[1]}" >> "$LINKED_ISSUES"
 fi
 
-# Method 3: Use GitHub API to find linked issues (requires GraphQL)
-gh api graphql -f query='
-  query($owner: String!, $repo: String!, $pr: Int!) {
-    repository(owner: $owner, name: $repo) {
-      pullRequest(number: $pr) {
-        closingIssuesReferences(first: 10) {
-          nodes {
-            number
-            title
-            body
-            state
-            labels(first: 10) {
-              nodes { name }
-            }
-          }
-        }
-      }
-    }
-  }' -f owner="$(echo $GITHUB_REPOSITORY | cut -d'/' -f1)" \
-     -f repo="$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)" \
-     -F pr="$PR_NUMBER" \
-     --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' 2>/dev/null >> "$LINKED_ISSUES" || true
+# Method 3: Use REST API to find linked issues (avoid GraphQL permission issues)
+gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.body' | grep -oE '#[0-9]+' | sed 's/#//' | sort -u >> "$LINKED_ISSUES" || true
 
 # Deduplicate issue numbers
 UNIQUE_ISSUES=$(cat "$LINKED_ISSUES" | sort -u | grep -E '^[0-9]+$' | tr '\n' ' ')
