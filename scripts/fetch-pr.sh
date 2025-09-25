@@ -3,6 +3,9 @@ set -e
 
 echo "Fetching PR #$PR_NUMBER from $GITHUB_REPOSITORY..."
 
+# Create data directory immediately to ensure context files can be created
+mkdir -p "$PR_DATA_DIR"
+
 # Check if PR exists and provide detailed debugging info
 echo "Checking if PR exists..."
 if ! gh pr view "$PR_NUMBER" > /dev/null 2>&1; then
@@ -27,6 +30,28 @@ if ! gh pr view "$PR_NUMBER" > /dev/null 2>&1; then
     echo "  2. The GitHub token has appropriate permissions"
     echo "  3. The repository is accessible"
     echo "  4. The workflow has proper pull request permissions"
+    
+    # Create minimal context files to prevent downstream failures
+    echo "Creating minimal context files for error recovery..."
+    cat > "$PR_DATA_DIR/context.md" << EOF
+# Pull Request #$PR_NUMBER - ERROR
+
+**ERROR**: Unable to fetch PR details. The PR may not exist or may be inaccessible.
+
+## Error Details
+- Repository: $GITHUB_REPOSITORY
+- PR Number: $PR_NUMBER
+- Event: $GITHUB_EVENT_NAME
+- Branch: $GITHUB_HEAD_REF
+
+## Review Instructions
+Unable to perform review due to PR access failure. Please check the workflow logs for details.
+EOF
+    
+    echo "# Unable to fetch diff for PR #$PR_NUMBER - PR not accessible" > "$PR_DATA_DIR/full.diff"
+    echo "# Unable to fetch file list - PR not accessible" > "$PR_DATA_DIR/files.txt"
+    
+    echo "⚠️  Created minimal context files for error handling"
     exit 1
 fi
 

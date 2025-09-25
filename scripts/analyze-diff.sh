@@ -182,6 +182,12 @@ echo "Checking context files..."
 if [ -f "$PR_DATA_DIR/context.md" ]; then
     echo "✅ Context file exists: $PR_DATA_DIR/context.md"
     echo "Context file size: $(wc -c < "$PR_DATA_DIR/context.md") bytes"
+    
+    # Check if context file indicates an error
+    if grep -qi "ERROR\|WARNING.*Unable to fetch\|Limited Information" "$PR_DATA_DIR/context.md"; then
+        echo "⚠️  Context file indicates PR fetch failure - review will be limited"
+        echo "PR_FETCH_FAILED=true" >> $GITHUB_ENV
+    fi
 else
     echo "❌ Context file missing: $PR_DATA_DIR/context.md"
 fi
@@ -189,6 +195,12 @@ fi
 if [ -f "$PR_DATA_DIR/full.diff" ]; then
     echo "✅ Diff file exists: $PR_DATA_DIR/full.diff"
     echo "Diff file size: $(wc -c < "$PR_DATA_DIR/full.diff") bytes"
+    
+    # Check if diff file indicates an error
+    if grep -qi "Unable to fetch diff\|ERROR\|WARNING" "$PR_DATA_DIR/full.diff"; then
+        echo "⚠️  Diff file indicates fetch failure - reviewing current code state"
+        echo "DIFF_FETCH_FAILED=true" >> $GITHUB_ENV
+    fi
 else
     echo "❌ Diff file missing: $PR_DATA_DIR/full.diff"
 fi

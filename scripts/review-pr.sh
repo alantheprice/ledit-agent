@@ -54,11 +54,40 @@ fi
 
 # Step 1: Fetch PR details and diff
 echo "📋 Fetching PR details..."
-# Use a subshell to avoid exit on error from fetch-pr.sh and continue gracefully
-if ! ($LEDIT_ACTION_PATH/scripts/fetch-pr.sh); then
-    echo "⚠️  WARNING: Failed to fetch PR details, but continuing with limited information"
-    # If we can't fetch PR details, still try to proceed with what we have
-    echo "Proceeding with basic review capabilities..."
+# Ensure PR data directory exists
+mkdir -p "$PR_DATA_DIR"
+
+# Run fetch-pr.sh but don't exit on failure - create fallback context files if needed
+if $LEDIT_ACTION_PATH/scripts/fetch-pr.sh; then
+    echo "✅ PR details fetched successfully"
+else
+    echo "⚠️  WARNING: Failed to fetch PR details, creating fallback context files"
+    
+    # Create minimal context files to ensure downstream scripts work
+    if [ ! -f "$PR_DATA_DIR/context.md" ]; then
+        cat > "$PR_DATA_DIR/context.md" << EOF
+# Pull Request #$PR_NUMBER - Limited Information
+
+**WARNING**: Unable to fetch complete PR details. Reviewing with limited information.
+
+## Review Instructions
+- Review Type: $REVIEW_TYPE
+- Comment Threshold: $COMMENT_THRESHOLD
+- Summary Only: $SUMMARY_ONLY
+
+Please review the available code changes. Some PR metadata may be missing.
+EOF
+    fi
+    
+    if [ ! -f "$PR_DATA_DIR/full.diff" ]; then
+        echo "# Unable to fetch PR diff - reviewing current code state" > "$PR_DATA_DIR/full.diff"
+    fi
+    
+    if [ ! -f "$PR_DATA_DIR/files.txt" ]; then
+        echo "# Unable to fetch file list" > "$PR_DATA_DIR/files.txt"
+    fi
+    
+    echo "Proceeding with limited review capabilities..."
 fi
 
 # Step 2: Analyze the diff with ledit
