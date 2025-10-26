@@ -44,6 +44,30 @@ Your current working directory is the repository root. You can use standard comm
 
 DO NOT make assumptions based only on the diff - validate everything against the actual code.
 
+CRITICAL ASSERTION VALIDATION REQUIREMENT:
+Before marking ANY issue as a problem, you MUST:
+1. Double-check the assertion by examining the actual code
+2. Verify the issue exists in the current codebase state
+3. Confirm the issue will actually cause problems (not just theoretical)
+4. Use available tools (cat, grep, rg, find) to validate your claims
+5. Only mark as an issue if you can demonstrate it with concrete evidence
+6. Ask yourself: "Will this actually break something in practice?"
+7. Provide specific examples of how the issue would manifest
+
+EVIDENCE-BASED REPORTING REQUIREMENT:
+Every issue reported MUST include:
+- Specific file path and line numbers where the issue occurs
+- Exact code snippet that demonstrates the problem
+- Explanation of how this would cause a real-world failure
+- Evidence from the actual codebase (not just assumptions)
+
+DO NOT report issues based on:
+- Assumptions about code behavior without verification
+- Theoretical problems that won't manifest in practice
+- Minor type issues that don't affect functionality
+- Style preferences or conventions that don't cause bugs
+- Potential issues that cannot be demonstrated with concrete evidence
+
 IMPORTANT: The context.md file contains full details of any linked GitHub issues that this PR addresses. 
 - The linked issues section includes the complete issue title, description, and comments
 - You DO NOT need to search elsewhere for issue context - it's all in context.md
@@ -123,11 +147,40 @@ The JSON format should be:
   "general_feedback": "Only if there are broader architectural concerns"
 }
 
-Severity levels (match to comment threshold):
-- critical: Will cause crashes, data loss, or security breaches
-- major: Bugs that affect functionality or moderate security risks
-- minor: Code quality issues that should be fixed
-- suggestion: Nice-to-have improvements (only for low threshold)
+Severity levels (use these precisely to avoid overuse of 'critical'):
+
+CRITICAL SEVERITY - USE EXTREMELY SPARINGLY:
+Only use "critical" for issues that WILL DEFINITELY cause:
+- Production crashes or system failures (null pointer exceptions, divide by zero, infinite loops)
+- Data loss or corruption (SQL injection, missing authentication on sensitive data)
+- Security breaches that can be exploited immediately
+- Memory leaks that will crash the system
+- Complete failure of core functionality
+
+DO NOT use "critical" for:
+- Type issues that don't affect functionality
+- Style or convention problems
+- Theoretical security concerns that cannot be exploited
+- Performance issues that don't cause system failure
+- Missing error handling in non-critical paths
+
+MAJOR SEVERITY - For real functional problems:
+- Bugs that break features or incorrect business logic
+- Security vulnerabilities in non-critical paths
+- Performance issues that significantly impact users
+- Missing error handling that could cause problems
+- Authentication or authorization bypasses
+
+MINOR SEVERITY - Code quality issues:
+- Inconsistent error handling that doesn't break functionality
+- Unused variables, poor naming conventions
+- Missing input validation in non-critical code
+- Code organization or maintainability issues
+
+SUGGESTION SEVERITY - Nice improvements only:
+- Code organization, minor optimizations
+- Documentation improvements
+- Style improvements (only for low threshold)
 
 Start by:
 1. Reading the context and diff files to understand the changes
@@ -171,6 +224,14 @@ sed -i "s|PR_NUMBER_PLACEHOLDER|$PR_NUMBER|g" "$PROMPT_FILE"
 sed -i "s|PR_DATA_DIR_PLACEHOLDER|$PR_DATA_DIR|g" "$PROMPT_FILE"
 sed -i "s|COMMENT_THRESHOLD_PLACEHOLDER|$COMMENT_THRESHOLD|g" "$PROMPT_FILE"
 sed -i "s|REVIEW_TYPE_PLACEHOLDER|$REVIEW_TYPE|g" "$PROMPT_FILE"
+
+# Add optional action instructions if provided
+if [ -n "$REVIEW_ACTION" ] && [ "$REVIEW_ACTION" != "null" ] && [ "$REVIEW_ACTION" != "" ]; then
+    echo "" >> "$PROMPT_FILE"
+    echo "ADDITIONAL REVIEW INSTRUCTIONS:" >> "$PROMPT_FILE"
+    echo "$REVIEW_ACTION" >> "$PROMPT_FILE"
+    echo "" >> "$PROMPT_FILE"
+fi
 
 # Debug: Check if prompt was written correctly
 echo "Prompt written to: $PROMPT_FILE"
@@ -295,7 +356,7 @@ echo "🔧 Output will be captured to: $REVIEW_OUTPUT"
 set -x  # Enable command tracing
 
 # Run the ledit command and capture both stdout and stderr
-timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"
+timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --no-stream --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"
 EXIT_CODE=${PIPESTATUS[0]}
 
 set +x  # Disable command tracing

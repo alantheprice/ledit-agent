@@ -286,6 +286,7 @@ Additional options for `mode: 'review'`:
     review-type: 'comprehensive'     # Focus area (see below)
     comment-threshold: 'medium'      # Comment verbosity (see below)
     summary-only: 'false'           # Only post summary, no inline comments
+    review-action: 'Focus specifically on security vulnerabilities and SQL injection risks'  # Custom review instructions
 ```
 
 **Review Types:**
@@ -298,6 +299,30 @@ Additional options for `mode: 'review'`:
 - `low` - All issues that need fixing (bugs, errors, quality problems)
 - `medium` - Moderate risks and above (bugs, security, performance issues)
 - `high` - Critical issues only (crashes, security vulnerabilities, data loss)
+
+**Custom Review Instructions (review-action):**
+The `review-action` parameter allows you to extend the code review prompt with additional instructions. This is useful for:
+- Focusing on specific security concerns
+- Highlighting particular coding standards
+- Adding project-specific review criteria
+- Emphasizing certain types of issues
+
+**Examples:**
+```yaml
+# Focus on security
+review-action: 'Pay special attention to authentication, authorization, and input validation issues'
+
+# Focus on performance
+review-action: 'Look for performance bottlenecks, inefficient algorithms, and database query optimization opportunities'
+
+# Project-specific standards
+review-action: 'Ensure all new code follows our TypeScript strict mode guidelines and includes proper error handling'
+
+# Compliance requirements
+review-action: 'Verify all changes comply with GDPR data protection requirements and include proper logging'
+```
+
+The custom instructions are appended to the standard review prompt under "ADDITIONAL REVIEW INSTRUCTIONS" and will be followed by the AI agent during the review process.
 
 **Note:** The reviewer only comments on problems that need to be fixed. It won't provide positive feedback or style suggestions unless they represent actual issues. This keeps reviews focused and actionable.
 
