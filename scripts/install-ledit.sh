@@ -69,20 +69,18 @@ else
     chmod +x "$(which ledit)" 2>/dev/null || echo "Failed to make ledit executable"
 fi
 
-# Check minimum version requirement (v0.5.10 for max-iterations support)
-REQUIRED_VERSION="v0.5.10"
+# Check minimum version requirement (v0.11.0 for workflow, persona, and subagent support)
+REQUIRED_VERSION="v0.11.0"
 if [ "$INSTALLED_VERSION" != "unknown" ] && [ "$INSTALLED_VERSION" != "$REQUIRED_VERSION" ]; then
     # Skip version check if installed version is "dev" (development build)
     if [ "$INSTALLED_VERSION" = "dev" ]; then
         echo "✅ Using development version of ledit (assuming latest features)"
     else
-        # Simple version comparison - remove 'v' prefix and compare
-        INSTALLED_NUM=$(echo "$INSTALLED_VERSION" | sed 's/v//' | tr -d '.' | grep -E '^[0-9]+$' || echo "0")
-        REQUIRED_NUM=$(echo "$REQUIRED_VERSION" | sed 's/v//' | tr -d '.')
-        
-        if [ "$INSTALLED_NUM" -gt 0 ] && [ "$INSTALLED_NUM" -lt "$REQUIRED_NUM" ]; then
+        # Proper semver comparison using sort -V (handles multi-digit minor versions correctly)
+        OLDER=$(printf '%s\n%s\n' "$INSTALLED_VERSION" "$REQUIRED_VERSION" | sort -V | head -1)
+        if [ "$OLDER" = "$INSTALLED_VERSION" ] && [ "$INSTALLED_VERSION" != "$REQUIRED_VERSION" ]; then
             echo "WARNING: Installed version $INSTALLED_VERSION is older than required version $REQUIRED_VERSION"
-            echo "The --max-iterations flag requires ledit $REQUIRED_VERSION or newer"
+            echo "Workflow, persona, and subagent features require ledit $REQUIRED_VERSION or newer"
         fi
     fi
 fi

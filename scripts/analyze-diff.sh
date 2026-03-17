@@ -1,33 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "======================================"
-echo "🚨 UPDATED SCRIPT IS RUNNING! 🚨"
-echo "🔧 SCRIPT VERSION: analyze-diff.sh v1.05"
-echo "📅 Script timestamp: $(date)"
-echo "📁 Script path: ${BASH_SOURCE[0]}"
-echo "======================================"
 echo "Analyzing PR diff with ledit..."
-
-# Set API key environment variable based on provider
-case "$AI_PROVIDER" in
-    openai)
-        export OPENAI_API_KEY="$AI_API_KEY"
-        ;;
-    openrouter)
-        export OPENROUTER_API_KEY="$AI_API_KEY"
-        ;;
-    deepinfra)
-        export DEEPINFRA_API_KEY="$AI_API_KEY"
-        ;;
-    ollama)
-        # Ollama doesn't need API key
-        ;;
-    *)
-        echo "ERROR: Unknown AI provider: $AI_PROVIDER"
-        exit 1
-        ;;
-esac
 
 # Build the prompt for ledit
 echo "Building prompt for PR review..."
@@ -327,13 +301,74 @@ fi
 #     exit 1
 # fi
 
-# Debug: Show final command that will be executed
+# Create the audit prompt for the second workflow step: verify finding accuracy before publishing
+AUDIT_PROMPT_FILE="$PR_DATA_DIR/audit-prompt.txt"
+cat > "$AUDIT_PROMPT_FILE" << AUDIT_PROMPT_INNER_EOF
+You have just completed a code review for PR #${PR_NUMBER}. Now audit your own findings for accuracy before they are published.
+
+Read your review results from: ${PR_DATA_DIR}/review.json
+
+For EVERY finding marked 'critical' or 'major':
+1. Re-examine the actual code at the specified file and line number using cat/grep/rg
+2. Verify the issue definitively exists and will cause the stated problem in real-world usage
+3. Confirm the severity is warranted:
+   - 'critical' = will cause production crashes, data loss, or immediately exploitable security vulnerabilities
+   - 'major' = real bugs that break features, genuine security vulnerabilities, significant performance degradation
+4. If the finding cannot be demonstrated with concrete evidence in the actual code, DOWNGRADE it
+
+Common false positives to catch and correct:
+- Type mismatches labeled 'critical' that do not cause runtime failures in this language/framework
+- Security concerns labeled 'critical' that require privileged access to exploit or cannot be triggered by an attacker
+- Performance issues labeled 'critical' that do not cause system crashes or data loss
+- Missing error handling labeled 'critical' in edge-case or non-critical code paths
+- Race conditions that are theoretical but not practically triggerable
+- Issues that exist in pre-existing code that was NOT changed by this PR
+
+After completing your audit:
+1. Rewrite ${PR_DATA_DIR}/review.json with corrected, accurate severity levels
+2. Reassess 'approval_status': if only minor/suggestion-level issues remain, change to 'approve' or 'comment' instead of 'request_changes'
+3. Update ${PR_DATA_DIR}/summary.md to reflect the audited, accurate findings
+
+Accuracy matters: missing a minor issue is preferable to incorrectly alarming engineers with a false 'critical' finding.
+AUDIT_PROMPT_INNER_EOF
+
+# Create a two-step review workflow: initial review then accuracy audit
+WORKFLOW_FILE="$PR_DATA_DIR/review-workflow.json"
+cat > "$WORKFLOW_FILE" << WORKFLOW_JSON_INNER_EOF
+{
+  "continue_on_error": true,
+  "persist_runtime_overrides": false,
+  "initial": {
+    "prompt_file": "${PROMPT_FILE}",
+    "persona": "code_reviewer",
+    "provider": "${AI_PROVIDER}",
+    "model": "${AI_MODEL}",
+    "max_iterations": ${MAX_ITERATIONS:-80},
+    "skip_prompt": true,
+    "no_stream": true
+  },
+  "steps": [
+    {
+      "name": "audit_review_accuracy",
+      "when": "on_success",
+      "persona": "code_reviewer",
+      "reasoning_effort": "high",
+      "max_iterations": 40,
+      "skip_prompt": true,
+      "no_stream": true,
+      "prompt_file": "${AUDIT_PROMPT_FILE}"
+    }
+  ]
+}
+WORKFLOW_JSON_INNER_EOF
+
+# Debug: Show workflow command that will be executed
 echo "=== FINAL COMMAND DEBUG ==="
-echo "Command: timeout ${LEDIT_TIMEOUT_MINUTES:-10}m ledit agent \\"
-echo "  --provider '$AI_PROVIDER' \\"
-echo "  --model '$AI_MODEL' \\"
-echo "  --max-iterations ${MAX_ITERATIONS:-180} \\"
-echo "  'prompt from $PROMPT_FILE'"
+echo "Command: timeout ${LEDIT_TIMEOUT_MINUTES:-10}m ledit agent --no-stream --workflow-config '$WORKFLOW_FILE'"
+echo ""
+echo "Workflow: 2-step review + accuracy audit"
+echo "  Step 1 (initial): code_reviewer persona - ${MAX_ITERATIONS:-80} max iterations"
+echo "  Step 2 (audit):   code_reviewer persona - 40 max iterations, reasoning_effort=high"
 echo ""
 echo "Environment:"
 echo "  DEEPINFRA_API_KEY: ${DEEPINFRA_API_KEY:+SET (${#DEEPINFRA_API_KEY} chars)}${DEEPINFRA_API_KEY:-NOT SET}"
@@ -341,13 +376,15 @@ echo "  Working directory: $(pwd)"
 echo "  Ledit version: $(ledit --version 2>/dev/null || echo 'version check failed')"
 echo ""
 echo "Files:"
-echo "  Prompt file: $PROMPT_FILE ($(wc -c < "$PROMPT_FILE") chars)"
+echo "  Prompt file:  $PROMPT_FILE ($(wc -c < "$PROMPT_FILE") chars)"
+echo "  Audit file:   $AUDIT_PROMPT_FILE ($(wc -c < "$AUDIT_PROMPT_FILE") chars)"
 echo "  Context file: $PR_DATA_DIR/context.md ($([ -f "$PR_DATA_DIR/context.md" ] && wc -c < "$PR_DATA_DIR/context.md" || echo 0) chars)"
-echo "  Diff file: $PR_DATA_DIR/full.diff ($([ -f "$PR_DATA_DIR/full.diff" ] && wc -c < "$PR_DATA_DIR/full.diff" || echo 0) chars)"
+echo "  Diff file:    $PR_DATA_DIR/full.diff ($([ -f "$PR_DATA_DIR/full.diff" ] && wc -c < "$PR_DATA_DIR/full.diff" || echo 0) chars)"
+echo "  Workflow:     $WORKFLOW_FILE"
 echo "============================"
 
-echo "Running ledit agent with timeout..."
-echo "🚀 EXECUTING LEDIT COMMAND NOW..."
+echo "Running ledit review+audit workflow..."
+echo "🚀 EXECUTING LEDIT WORKFLOW NOW..."
 
 # Create temporary file for output capture
 REVIEW_OUTPUT=$(mktemp)
@@ -355,8 +392,8 @@ echo "🔧 Output will be captured to: $REVIEW_OUTPUT"
 
 set -x  # Enable command tracing
 
-# Run the ledit command and capture both stdout and stderr
-timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --no-stream --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$(cat "$PROMPT_FILE")" 2>&1 | tee "$REVIEW_OUTPUT"
+# Run the two-step review workflow: step 1 reviews the PR, step 2 audits findings for accuracy
+timeout "${LEDIT_TIMEOUT_MINUTES:-10}m" ledit agent --no-stream --workflow-config "$WORKFLOW_FILE" 2>&1 | tee "$REVIEW_OUTPUT"
 EXIT_CODE=${PIPESTATUS[0]}
 
 set +x  # Disable command tracing
@@ -415,20 +452,6 @@ else
     echo "📁 Debug output saved at: $REVIEW_OUTPUT"
     
     # FORCE EXIT HERE to ensure we see this error output
-    exit $EXIT_CODE
-fi
-set +x  # Disable command tracing
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ Ledit agent failed with exit code: $EXIT_CODE"
-    echo "💡 Troubleshooting tips:"
-    echo "   1. Verify your API key is valid and has the right permissions"
-    echo "   2. Check if the model '${AI_MODEL}' is available on ${AI_PROVIDER}"
-    echo "   3. Try a different model or provider"
-    echo "   4. Check network connectivity to the AI provider"
-    
-    # Don't remove the output file yet - keep it for debugging
-    echo "📁 Debug output saved at: $REVIEW_OUTPUT"
     exit $EXIT_CODE
 fi
 

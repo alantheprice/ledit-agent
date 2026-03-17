@@ -19,16 +19,61 @@ inputs:
   
   # AI Provider Configuration
   ai-provider:
-    description: 'AI provider to use (openai, openrouter, groq, deepinfra, ollama, cerebras, deepseek)'
+    description: 'Primary AI provider to use for the main agent step (openai, openrouter, zai, deepinfra, chutes, mistral, or a custom provider name set via custom-provider-name)'
     required: true
   
   ai-model:
-    description: 'AI model to use (e.g., gpt-4o, claude-3-opus, etc.)'
+    description: 'Model to use with the primary provider (e.g., deepseek-ai/DeepSeek-V3, GLM-4.6, openai/gpt-4o)'
     required: true
-  
-  ai-api-key:
-    description: 'API key for the selected AI provider'
-    required: true
+
+  # Provider API keys — set whichever providers you use.
+  # Ledit reads these as standard env vars so multiple providers can be active
+  # in the same run (e.g. one for coding, another for multimodal vision work).
+  openai-api-key:
+    description: 'OpenAI API key (OPENAI_API_KEY)'
+    required: false
+  openrouter-api-key:
+    description: 'OpenRouter API key (OPENROUTER_API_KEY)'
+    required: false
+  deepinfra-api-key:
+    description: 'DeepInfra API key (DEEPINFRA_API_KEY)'
+    required: false
+  zai-api-key:
+    description: 'Z.AI API key (ZAI_API_KEY)'
+    required: false
+  chutes-api-key:
+    description: 'Chutes API key (CHUTES_API_KEY)'
+    required: false
+  mistral-api-key:
+    description: 'Mistral API key (MISTRAL_API_KEY)'
+    required: false
+  jina-api-key:
+    description: 'Jina AI API key for web search and URL fetching — free at jina.ai (JINA_API_KEY). Enables the orchestrator and code_reviewer personas to validate libraries and docs.'
+    required: false
+
+  # Custom provider — for any OpenAI-compatible endpoint not listed above
+  custom-provider-name:
+    description: 'Identifier for the custom provider. Set ai-provider to this value to use it.'
+    required: false
+    default: 'custom'
+  custom-provider-url:
+    description: 'Base endpoint URL for the custom provider (e.g. https://api.example.com/v1)'
+    required: false
+  custom-provider-model:
+    description: 'Default model name for the custom provider (defaults to ai-model if not set)'
+    required: false
+  custom-provider-api-key:
+    description: 'API key for the custom provider'
+    required: false
+
+  # Subagent provider overrides
+  subagent-coder-provider:
+    description: 'Provider to use for the coder subagent (e.g. a custom provider name). Defaults to ai-provider.'
+    required: false
+  subagent-coder-model:
+    description: 'Model to use for the coder subagent. Defaults to ai-model.'
+    required: false
+
   
   # Review Mode Configuration
   review-type:
@@ -53,9 +98,9 @@ inputs:
     default: 'latest'
   
   timeout-minutes:
-    description: 'Timeout for the ledit agent in minutes'
+    description: 'Timeout for the ledit agent in minutes. Both solve and review run a 2-step workflow (implement/review + verify/audit), so values of 20+ are recommended.'
     required: false
-    default: '10'
+    default: '20'
   
   # MCP Configuration
   enable-mcp:
@@ -146,8 +191,20 @@ runs:
       env:
         AI_PROVIDER: ${{ inputs.ai-provider }}
         AI_MODEL: ${{ inputs.ai-model }}
-        AI_API_KEY: ${{ inputs.ai-api-key }}
         MAX_ITERATIONS: ${{ inputs.max-iterations }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        DEEPINFRA_API_KEY: ${{ inputs.deepinfra-api-key }}
+        ZAI_API_KEY: ${{ inputs.zai-api-key }}
+        CHUTES_API_KEY: ${{ inputs.chutes-api-key }}
+        MISTRAL_API_KEY: ${{ inputs.mistral-api-key }}
+        JINA_API_KEY: ${{ inputs.jina-api-key }}
+        CUSTOM_PROVIDER_NAME: ${{ inputs.custom-provider-name }}
+        CUSTOM_PROVIDER_URL: ${{ inputs.custom-provider-url }}
+        CUSTOM_PROVIDER_MODEL: ${{ inputs.custom-provider-model }}
+        CUSTOM_PROVIDER_API_KEY: ${{ inputs.custom-provider-api-key }}
+        SUBAGENT_CODER_PROVIDER: ${{ inputs.subagent-coder-provider }}
+        SUBAGENT_CODER_MODEL: ${{ inputs.subagent-coder-model }}
       run: |
         ${{ github.action_path }}/scripts/configure-ledit.sh
     
@@ -169,13 +226,25 @@ runs:
         LEDIT_DEBUG: ${{ inputs.debug }}
         AI_PROVIDER: ${{ inputs.ai-provider }}
         AI_MODEL: ${{ inputs.ai-model }}
-        AI_API_KEY: ${{ inputs.ai-api-key }}
         ENABLE_MCP: ${{ inputs.enable-mcp }}
         MAX_ITERATIONS: ${{ inputs.max-iterations }}
         REVIEW_TYPE: ${{ inputs.review-type }}
         COMMENT_THRESHOLD: ${{ inputs.comment-threshold }}
         SUMMARY_ONLY: ${{ inputs.summary-only }}
         AUTO_REVIEW: ${{ inputs.auto-review }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        DEEPINFRA_API_KEY: ${{ inputs.deepinfra-api-key }}
+        ZAI_API_KEY: ${{ inputs.zai-api-key }}
+        CHUTES_API_KEY: ${{ inputs.chutes-api-key }}
+        MISTRAL_API_KEY: ${{ inputs.mistral-api-key }}
+        JINA_API_KEY: ${{ inputs.jina-api-key }}
+        CUSTOM_PROVIDER_NAME: ${{ inputs.custom-provider-name }}
+        CUSTOM_PROVIDER_URL: ${{ inputs.custom-provider-url }}
+        CUSTOM_PROVIDER_MODEL: ${{ inputs.custom-provider-model }}
+        CUSTOM_PROVIDER_API_KEY: ${{ inputs.custom-provider-api-key }}
+        SUBAGENT_CODER_PROVIDER: ${{ inputs.subagent-coder-provider }}
+        SUBAGENT_CODER_MODEL: ${{ inputs.subagent-coder-model }}
       run: |
         if [ "${{ inputs.mode }}" == "review" ]; then
           ${{ github.action_path }}/scripts/review-pr.sh

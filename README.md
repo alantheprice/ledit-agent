@@ -22,9 +22,8 @@ Automatically solve GitHub issues and review pull requests using AI-powered code
 - 🔗 **Issue Validation** - Verifies PR actually solves linked issues
 
 ### General
-- 🔧 **Multi-Provider Support** - Works with OpenAI, Groq, Gemini, DeepInfra, and more
-- 🛡️ **Secure by Design** - All changes go through PR review process
-- 💰 **Cost Tracking** - See AI costs for each operation
+- 🔧 **Multi-Provider Support** - Works with OpenAI, OpenRouter, ZAI, DeepInfra, Chutes, Mistral, and custom OpenAI-compatible endpoints
+- 🔍 **Jina AI Web Search** - Orchestrator and reviewer can look up docs and validate libraries in real time
 
 ## Quick Start
 
@@ -68,7 +67,7 @@ jobs:
           ai-provider: 'openai'
           ai-model: 'gpt-4o-mini'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          ai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 ### For PR Reviews
@@ -108,7 +107,7 @@ jobs:
           ai-provider: 'deepinfra'
           ai-model: 'deepseek-ai/DeepSeek-V3.1'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          deepinfra-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
           review-type: 'comprehensive'
           comment-threshold: 'medium'
 ```
@@ -123,15 +122,18 @@ jobs:
 4. Check **Allow GitHub Actions to create and approve pull requests**
 5. Click **Save**
 
-### 3. Add API Key
+### 3. Add API Keys
 
 1. Go to **Settings** → **Secrets and variables** → **Actions**
 2. Click **New repository secret**
-3. Add your API key (name depends on provider):
+3. Add your API key(s) — use whichever providers you plan to use:
    - OpenAI: `OPENAI_API_KEY`
-   - Groq: `GROQ_API_KEY`
-   - Gemini: `GEMINI_API_KEY`
    - DeepInfra: `DEEPINFRA_API_KEY`
+   - OpenRouter: `OPENROUTER_API_KEY`
+   - ZAI: `ZAI_API_KEY`
+   - Chutes: `CHUTES_API_KEY`
+   - Mistral: `MISTRAL_API_KEY`
+   - Jina AI (web search): `JINA_API_KEY` — [free tier available](https://jina.ai)
 
 ### 4. Use It!
 
@@ -141,31 +143,60 @@ jobs:
 
 ## Supported Providers
 
+### ZAI
+Built-in vision support via GLM models.
+```yaml
+ai-provider: 'zai'           # Balanced
+ai-model: 'glm-4.6v'           # Fast and cost-effective
+zai-api-key: ${{ secrets.ZAI_API_KEY }}
+```
+
 ### OpenAI
 ```yaml
 ai-provider: 'openai'
-ai-model: 'gpt-5'          # Most capable
-ai-model: 'gpt-5-mini'     # Cost-effective for an openai model
-ai-api-key: ${{ secrets.OPENAI_API_KEY }}
+ai-model: 'gpt-5'                # Most capable
+ai-model: 'gpt-5-mini'           # Cost-effective
+openai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 ### DeepInfra
 ```yaml
 ai-provider: 'deepinfra'
-ai-model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo'  # fast and capable
-ai-model: 'deepseek-ai/DeepSeek-V3.1'                  # Slower, but excellent for complex reasoning
-ai-model: 'moonshotai/Kimi-K2-Instruct-0905'           # Very capable, slightly higher cost
-ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+ai-model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo'  # Fast and capable
+ai-model: 'deepseek-ai/DeepSeek-V3.1'                   # Excellent for complex reasoning
+ai-model: 'moonshotai/Kimi-K2-Instruct-0905'            # Very capable, slightly higher cost
+deepinfra-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
 ```
 
-
 ### OpenRouter
-Open router does have multiple free models available, but they are slow and can run into rate limiting issues.
+Large model catalogue including free tiers (may be slow or rate-limited).
 ```yaml
 ai-provider: 'openrouter'
-ai-model: 'qwen/qwen3-coder-30b-a3b-instruct'          # Smallest and cheapest model, does handle some tasks, but might not perform well in complex tasks due to the smaller model size.
-# Huge number of model options available both free and paid.
-ai-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+ai-model: 'qwen/qwen3-coder-30b-a3b-instruct'
+openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+```
+
+### Chutes
+```yaml
+ai-provider: 'chutes'
+ai-model: 'deepseek-ai/DeepSeek-V3-0324'
+chutes-api-key: ${{ secrets.CHUTES_API_KEY }}
+```
+
+### Mistral
+```yaml
+ai-provider: 'mistral'
+ai-model: 'mistral-large-latest'
+mistral-api-key: ${{ secrets.MISTRAL_API_KEY }}
+```
+
+### Custom Provider (any OpenAI-compatible endpoint)
+```yaml
+ai-provider: 'myprovider'          # matches custom-provider-name
+custom-provider-name: 'myprovider'
+custom-provider-url: 'https://api.example.com/v1'
+custom-provider-model: 'my-model'
+custom-provider-api-key: ${{ secrets.MY_PROVIDER_KEY }}
 ```
 
 
@@ -244,16 +275,19 @@ Both modes support these options:
 - uses: alantheprice/ledit-agent@v1
   with:
     # Required
-    ai-provider: 'openai'           # Provider: openai, deepinfra, groq, etc.
-    ai-model: 'gpt-4o-mini'         # Model name for the provider
+    ai-provider: 'zai'              # Provider: openai, zai, deepinfra, openrouter, chutes, mistral, or a custom name
+    ai-model: 'GLM-4-Plus'          # Model name for the provider
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    ai-api-key: ${{ secrets.OPENAI_API_KEY }}
-    
+
+    # Provider API keys — set whichever providers you use
+    zai-api-key: ${{ secrets.ZAI_API_KEY }}
+    jina-api-key: ${{ secrets.JINA_API_KEY }}  # Optional: enables web search for orchestrator/reviewer
+
     # Optional
-    timeout-minutes: 20              # Max runtime (default: 10)
-    ledit-version: 'latest'         # Specific ledit version (e.g., 'v0.5.10')
+    timeout-minutes: 20             # Default: 20 (3-step workflow needs time)
+    ledit-version: 'latest'         # Specific ledit version (e.g., 'v0.11.0')
     debug: 'false'                  # Enable debug logging
-    auto-review: 'false'            # Auto-add /ledit-review comment after solving issues
+    auto-review: 'false'            # Auto-add /ledit-review comment after solving
 ```
 
 ### Issue Solving Options
@@ -336,6 +370,31 @@ The custom instructions are appended to the standard review prompt under "ADDITI
 
 ## Advanced Configuration
 
+### Multi-Provider Configuration
+
+You can supply keys for multiple providers simultaneously. The orchestrator can then spawn subagents using whichever provider suits the task, and `code_reviewer` can use web search to validate libraries.
+
+```yaml
+- uses: alantheprice/ledit-agent@v1
+  with:
+    # Primary provider (orchestrator + main solve step)
+    ai-provider: 'zai'
+    ai-model: 'GLM-5.0-Air'
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Provider keys — all configured providers are available to subagents
+    zai-api-key: ${{ secrets.ZAI_API_KEY }}
+    deepinfra-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+    jina-api-key: ${{ secrets.JINA_API_KEY }}   # web search for orchestrator/code_reviewer
+
+    # Route the coder subagent to a custom provider
+    subagent-coder-provider: 'myprovider'
+    subagent-coder-model: 'my-fast-coding-model'
+    custom-provider-name: 'myprovider'
+    custom-provider-url: 'https://api.myprovider.com/v1'
+    custom-provider-api-key: ${{ secrets.MY_PROVIDER_KEY }}
+```
+
 ### Custom Trigger Commands
 
 ```yaml
@@ -389,8 +448,8 @@ on:
 - **PR Feedback** - The agent automatically sees PR reviews and comments, so you can ask it to "address the PR feedback" or "fix the issues mentioned in the review"
 
 ### For Cost Control
-- Start with cheaper models (`gpt-4o-mini`, `gemini-flash`)
-- Use Groq's free tier for testing
+- Start with cheaper models (`gpt-4o-mini`, `GLM-5.0-Air`, `qwen3-coder-30b`)
+- Use OpenRouter's free tier for low-stakes testing
 - Set timeout limits for long-running tasks
 - Monitor usage in your provider's dashboard
 
@@ -424,10 +483,10 @@ If you see: `GitHub Actions is not permitted to create or approve pull requests`
 3. Save and try again
 
 ### Wrong Ledit Version Installed
-If the action installs an older version (e.g., v0.5.9) when 'latest' is specified:
-- Specify the exact version: `ledit-version: 'v0.5.10'`
+If the action installs an older version when `latest` is specified:
+- Specify the exact version: `ledit-version: 'v0.11.0'`
 - This can happen due to Go module proxy caching
-- Minimum v0.5.10 is required for max-iterations support
+- Minimum v0.11.0 is required for workflow, persona, and subagent features
 
 ### PR Review Claims Files Don't Exist
 If the reviewer says files added in the PR don't exist:

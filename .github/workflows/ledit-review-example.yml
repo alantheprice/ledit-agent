@@ -33,7 +33,8 @@ jobs:
           ai-provider: 'deepinfra'
           ai-model: 'deepseek-ai/DeepSeek-V3.1'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          ai-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          deepinfra-api-key: ${{ secrets.DEEPINFRA_API_KEY }}
+          jina-api-key: ${{ secrets.JINA_API_KEY }}
           
           # Optional review-specific settings
           review-type: 'comprehensive'     # comprehensive, security, performance, style

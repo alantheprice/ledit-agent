@@ -7,7 +7,6 @@ echo "Running ledit agent..."
 if [ "$LEDIT_DEBUG" == "true" ]; then
     echo "DEBUG: AI_PROVIDER=$AI_PROVIDER"
     echo "DEBUG: AI_MODEL=$AI_MODEL"
-    echo "DEBUG: AI_API_KEY=${AI_API_KEY:0:10}..." # Print first 10 chars for security
 fi
 
 # Validate required environment variables
@@ -31,26 +30,6 @@ fi
 
 # Initialize workspace
 cd "$LEDIT_WORKSPACE"
-
-# Set the appropriate API key environment variable based on provider
-case "$AI_PROVIDER" in
-    openai)
-        export OPENAI_API_KEY="$AI_API_KEY"
-        ;;
-    openrouter)
-        export OPENROUTER_API_KEY="$AI_API_KEY"
-        ;;
-    deepinfra)
-        export DEEPINFRA_API_KEY="$AI_API_KEY"
-        ;;
-    ollama)
-        # Ollama doesn't need API key
-        ;;
-    *)
-        echo "ERROR: Unknown AI provider: $AI_PROVIDER"
-        exit 1
-        ;;
-esac
 
 # Build the prompt for ledit
 PROMPT="You are helping to solve GitHub issue #$ISSUE_NUMBER from the repository $GITHUB_REPOSITORY.
@@ -110,65 +89,92 @@ fi
 PROMPT+="
 Start by reading the issue context to understand what needs to be done."
 
-# Verify API key is set before running
-case "$AI_PROVIDER" in
-    openai)
-        if [ -z "$OPENAI_API_KEY" ]; then
-            echo "❌ ERROR: OPENAI_API_KEY is not set for provider 'openai'"
-            exit 1
-        fi
-        ;;
-    openrouter)
-        if [ -z "$OPENROUTER_API_KEY" ]; then
-            echo "❌ ERROR: OPENROUTER_API_KEY is not set for provider 'openrouter'"
-            exit 1
-        fi
-        ;;
-    groq)
-        if [ -z "$GROQ_API_KEY" ]; then
-            echo "❌ ERROR: GROQ_API_KEY is not set for provider 'groq'"
-            exit 1
-        fi
-        ;;
-    deepinfra)
-        if [ -z "$DEEPINFRA_API_KEY" ]; then
-            echo "❌ ERROR: DEEPINFRA_API_KEY is not set for provider 'deepinfra'"
-            exit 1
-        fi
-        ;;
-    cerebras)
-        if [ -z "$CEREBRAS_API_KEY" ]; then
-            echo "❌ ERROR: CEREBRAS_API_KEY is not set for provider 'cerebras'"
-            exit 1
-        fi
-        ;;
-    deepseek)
-        if [ -z "$DEEPSEEK_API_KEY" ]; then
-            echo "❌ ERROR: DEEPSEEK_API_KEY is not set for provider 'deepseek'"
-            exit 1
-        fi
-        ;;
-    anthropic)
-        if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "❌ ERROR: ANTHROPIC_API_KEY is not set for provider 'anthropic'"
-            exit 1
-        fi
-        ;;
-    ollama)
-        # Ollama doesn't need API key
-        ;;
-esac
+# Write the solve prompt to a temp file for the workflow config
+SOLVE_PROMPT_FILE=$(mktemp --suffix="-solve-prompt.txt")
+printf '%s\n' "$PROMPT" > "$SOLVE_PROMPT_FILE"
 
-# Run ledit agent with timeout and provider/model flags
+# Create a verification audit prompt: after implementation, check completeness against requirements
+SOLVE_AUDIT_FILE=$(mktemp --suffix="-solve-audit.txt")
+cat > "$SOLVE_AUDIT_FILE" << SOLVE_AUDIT_INNER_EOF
+You are reviewing the implementation just completed for GitHub issue #${ISSUE_NUMBER}.
+
+1. Re-read the original issue requirements from: ${ISSUE_CONTEXT_FILE}
+2. Examine the changes made in this branch (use git diff HEAD~1 or check recently modified files)
+3. Confirm every requirement stated in the issue is addressed
+4. Check that every 'Inline Code Review Comment' referenced in the context has been resolved
+5. If the project has a build/test command (e.g. 'go build ./...', 'npm test', 'pytest', 'cargo check'), run it and report the result
+
+Write a brief verification report to ${LEDIT_WORKSPACE}/.ledit-verify.md covering:
+- Requirements met / not met
+- Any missing functionality or unresolved review comments
+- Build/test result (pass, fail, or skipped if no test runner found)
+
+Be factual and concise. Do not rewrite code — report only.
+SOLVE_AUDIT_INNER_EOF
+
+# Create a fix prompt for the third workflow step: orchestrator resolves issues found by the code reviewer
+SOLVE_FIX_FILE=$(mktemp --suffix="-solve-fix.txt")
+cat > "$SOLVE_FIX_FILE" << SOLVE_FIX_INNER_EOF
+The code reviewer has completed a verification pass and written a report to ${LEDIT_WORKSPACE}/.ledit-verify.md.
+
+Read that report now. For every item listed as 'not met', 'missing', or 'failed':
+1. Resolve the gap — implement the missing functionality, fix the failing build/test, or address the unresolved review comment
+2. Re-run any build or test command from the report to confirm the fix
+3. Update ${LEDIT_WORKSPACE}/.ledit-verify.md to mark each resolved item as fixed
+
+If the report shows everything is met and the build passes, there is nothing to do — just confirm that in the report.
+SOLVE_FIX_INNER_EOF
+
+# Create a three-step solve workflow: implement → review → fix
+SOLVE_WORKFLOW_FILE=$(mktemp --suffix="-solve-workflow.json")
+cat > "$SOLVE_WORKFLOW_FILE" << SOLVE_WORKFLOW_INNER_EOF
+{
+  "continue_on_error": false,
+  "persist_runtime_overrides": false,
+  "initial": {
+    "prompt_file": "${SOLVE_PROMPT_FILE}",
+    "persona": "orchestrator",
+    "provider": "${AI_PROVIDER}",
+    "model": "${AI_MODEL}",
+    "max_iterations": ${MAX_ITERATIONS:-180},
+    "skip_prompt": true,
+    "no_stream": true
+  },
+  "steps": [
+    {
+      "name": "verify_implementation",
+      "when": "on_success",
+      "persona": "code_reviewer",
+      "reasoning_effort": "high",
+      "max_iterations": 40,
+      "skip_prompt": true,
+      "no_stream": true,
+      "prompt_file": "${SOLVE_AUDIT_FILE}"
+    },
+    {
+      "name": "fix_review_findings",
+      "when": "on_success",
+      "file_exists": ["${LEDIT_WORKSPACE}/.ledit-verify.md"],
+      "persona": "orchestrator",
+      "max_iterations": 90,
+      "skip_prompt": true,
+      "no_stream": true,
+      "prompt_file": "${SOLVE_FIX_FILE}"
+    }
+  ]
+}
+SOLVE_WORKFLOW_INNER_EOF
+
+# Run ledit agent with two-step solve workflow
 echo "Starting ledit agent with ${LEDIT_TIMEOUT_MINUTES} minute timeout..."
 echo "Using model: $AI_MODEL with provider: $AI_PROVIDER"
-echo "Max iterations: ${MAX_ITERATIONS:-180}"
+echo "Running 3-step workflow: orchestrate solution (${MAX_ITERATIONS:-180} iterations) + code_reviewer verify (40 iterations) + orchestrator fix (90 iterations)"
 
 # Create a temporary file to capture the output
 OUTPUT_FILE=$(mktemp)
 
-# Run ledit and capture output
-timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --no-stream --provider "$AI_PROVIDER" --model "$AI_MODEL" --max-iterations "${MAX_ITERATIONS:-180}" "$PROMPT" 2>&1 | tee "$OUTPUT_FILE"
+# Run ledit workflow and capture output
+timeout "${LEDIT_TIMEOUT_MINUTES}m" ledit agent --no-stream --workflow-config "$SOLVE_WORKFLOW_FILE" 2>&1 | tee "$OUTPUT_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
 # Check for specific error patterns in the output
@@ -192,8 +198,8 @@ if [ -n "$COST_LINE" ]; then
     echo "LEDIT_COST=$COST" >> $GITHUB_ENV
 fi
 
-# Clean up temp file
-rm -f "$OUTPUT_FILE"
+# Clean up temp files
+rm -f "$OUTPUT_FILE" "$SOLVE_PROMPT_FILE" "$SOLVE_AUDIT_FILE" "$SOLVE_FIX_FILE" "$SOLVE_WORKFLOW_FILE"
 
 # Handle exit codes
 if [ $EXIT_CODE -ne 0 ]; then
