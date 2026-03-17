@@ -274,20 +274,28 @@ Both modes support these options:
 ```yaml
 - uses: alantheprice/ledit-agent@v1
   with:
-    # Required
-    ai-provider: 'zai'              # Provider: openai, zai, deepinfra, openrouter, chutes, mistral, or a custom name
-    ai-model: 'GLM-4-Plus'          # Model name for the provider
+    # Primary provider — ZAI with GLM-5 as the orchestrator/main model
+    ai-provider: 'zai'
+    ai-model: 'GLM-5.0-Air'
     github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # Provider API keys — set whichever providers you use
+    # Provider API keys
     zai-api-key: ${{ secrets.ZAI_API_KEY }}
-    jina-api-key: ${{ secrets.JINA_API_KEY }}  # Optional: enables web search for orchestrator/reviewer
+    jina-api-key: ${{ secrets.JINA_API_KEY }}    # Enables web search in orchestrator + code_reviewer steps
+
+    # Custom provider for the coder subagent
+    # Set ai-provider: 'myprovider' above instead if you want it as the primary too
+    subagent-coder-provider: 'myprovider'
+    subagent-coder-model: 'my-fast-coding-model'
+    custom-provider-name: 'myprovider'
+    custom-provider-url: 'https://api.myprovider.com/v1'
+    custom-provider-api-key: ${{ secrets.MY_PROVIDER_KEY }}
 
     # Optional
     timeout-minutes: 20             # Default: 20 (3-step workflow needs time)
-    ledit-version: 'latest'         # Specific ledit version (e.g., 'v0.11.0')
-    debug: 'false'                  # Enable debug logging
-    auto-review: 'false'            # Auto-add /ledit-review comment after solving
+    ledit-version: 'latest'         # Pin to specific version if needed (e.g., 'v0.11.0')
+    debug: 'false'
+    auto-review: 'false'
 ```
 
 ### Issue Solving Options
