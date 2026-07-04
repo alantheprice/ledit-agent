@@ -172,14 +172,28 @@ runs:
         # Install Go if not present
         if ! command -v go &> /dev/null; then
           echo "Installing Go..."
-          curl -sL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf -
+          if [ "$(id -u)" = "0" ]; then
+            curl -sL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+          else
+            curl -sL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf - 2>/dev/null || \
+            curl -sL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | tar -C /usr/local -xzf - 2>/dev/null || \
+            curl -sL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | tar -C $HOME/.local -xzf -
+          fi
           echo 'export PATH=$PATH:/usr/local/go/bin' >> $GITHUB_ENV
           echo 'export PATH=$PATH:$HOME/go/bin' >> $GITHUB_ENV
           export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
         fi
         
-        # Install jq for JSON parsing
-        sudo apt-get update && sudo apt-get install -y jq
+        # Install jq for JSON parsing (skip if already present or no sudo)
+        if ! command -v jq &> /dev/null; then
+          if command -v sudo &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+          elif command -v apt-get &> /dev/null && [ "$(id -u)" = "0" ]; then
+            apt-get update && apt-get install -y jq
+          else
+            echo "Warning: Cannot install jq (no sudo/root). Assuming it's available."
+          fi
+        fi
     
     - name: Install ledit
       shell: bash
